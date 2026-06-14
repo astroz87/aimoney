@@ -1,0 +1,38 @@
+# 환경 변수 / 비밀
+.env
+*.env
+!.env.example
+
+# 파이썬
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Playwright 인증 상태 저장 파일
+auth_state.json
+*.storage.json
+
+# 작업 산출물 (다운로드 미디어, 가공 이미지 등)
+output/
+downloads/
+*.mp4
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+
+# 로그
+*.log
+logs/
+
+# OS / 에디터
+.DS_Store
+.idea/
+.vscode/

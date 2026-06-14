@@ -1,0 +1,18 @@
+# Threads × Coupang Partners 마케팅 자동화 CLI 의존성
+# Python 3.10+
+
+# 웹 자동화 (스크래핑 / 자동 포스팅)
+playwright>=1.44.0
+
+# AI 연동 (Claude)
+anthropic>=0.40.0
+
+# 미디어 처리
+opencv-python>=4.9.0
+Pillow>=10.3.0
+
+# 환경 변수 관리
+python-dotenv>=1.0.1
+
+# HTTP 다운로드 (미디어 파일 비동기 다운로드)
+aiohttp>=3.9.5
