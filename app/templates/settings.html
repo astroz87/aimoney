@@ -43,9 +43,10 @@
       <label>API Key<input name="anthropic_api_key" value="{{ settings.anthropic_api_key }}" placeholder="sk-ant-..."></label>
       <label>모델
         <select name="claude_model">
-          {% for m in ['claude-opus-4-8','claude-sonnet-5','claude-haiku-4-5-20251001'] %}
+          {% for m in ['claude-opus-4-8','claude-fable-5','claude-sonnet-5','claude-haiku-4-5'] %}
           <option {{ 'selected' if settings.claude_model == m else '' }}>{{ m }}</option>{% endfor %}
         </select>
+        <small class="hint">fable-5: 최고성능·2배가격 / opus-4-8: 권장 기본 / sonnet-5: 저비용</small>
       </label>
     </div>
   </section>

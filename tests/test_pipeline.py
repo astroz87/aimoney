@@ -149,6 +149,16 @@ def test_storyline_role_assignment():
     assert _assign_role(1, 5) in ("problem", "solution", "proof")
 
 
+# ---------------- LLM 모델 목록 (Fable 5 반영) ----------------
+def test_claude_models_include_fable_and_valid_ids():
+    from engine.llm.factory import AVAILABLE_MODELS
+    claude = AVAILABLE_MODELS["claude"]
+    assert "claude-fable-5" in claude
+    assert claude[0] == "claude-opus-4-8"  # 기본 권장 모델 유지
+    # 잘못된(날짜 접미사) ID 가 목록에 없어야 함
+    assert all(not m.endswith("20251001") for m in claude)
+
+
 # ---------------- 스톡 프로바이더 ----------------
 def test_stock_pexels_without_key_falls_back_to_mock():
     prov = get_stock_provider("pexels", api_key="", allow_fallback=True)

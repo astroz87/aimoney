@@ -15,8 +15,10 @@ from .mock_provider import MockLLMProvider
 logger = logging.getLogger(__name__)
 
 # 프로바이더별 사용 가능 모델 (설정 UI 드롭다운 참고용)
+# claude-fable-5: 최상위 모델($10/$50 per 1M) — thinking 항상 켜짐, 30일 데이터보존 필요.
+# 대본 생성 기본값은 claude-opus-4-8($5/$25) 권장.
 AVAILABLE_MODELS: dict[str, list[str]] = {
-    "claude": ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
+    "claude": ["claude-opus-4-8", "claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5"],
     "gemini": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
     "openai": ["gpt-4o", "gpt-4o-mini", "gpt-4.1"],
     "mock": ["mock"],
