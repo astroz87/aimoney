@@ -42,6 +42,34 @@ def make_thumbnail(video_path: str, out_path: str, *, at_sec: float = 0.0,
     return str(out)
 
 
+def make_clip_thumb(video_path: str, out_path: str, *, at_sec: float = 0.0,
+                    width: int = 240) -> str:
+    """편집기 슬라이드용 소형 썸네일(jpg). 프레임 추출 후 width 기준 축소."""
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    frame = _extract_frame(video_path, at_sec)
+    if frame is None:
+        _placeholder_small(out, width)
+        return str(out)
+    try:
+        import cv2
+        h, w = frame.shape[:2]
+        scale = width / max(1, w)
+        resized = cv2.resize(frame, (width, max(1, int(h * scale))))
+        cv2.imwrite(str(out), resized)
+    except Exception:  # noqa: BLE001
+        _placeholder_small(out, width)
+    return str(out)
+
+
+def _placeholder_small(out: Path, width: int) -> None:
+    try:
+        from PIL import Image
+        Image.new("RGB", (width, int(width * 16 / 9)), (32, 36, 48)).save(out, quality=85)
+    except Exception:  # noqa: BLE001
+        out.write_bytes(b"")
+
+
 def _extract_frame(video_path: str, at_sec: float):
     try:
         import cv2

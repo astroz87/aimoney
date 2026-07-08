@@ -35,6 +35,23 @@ def init_db() -> None:
     from . import models_orm  # noqa: F401
 
     Base.metadata.create_all(bind=_engine)
+    _run_light_migrations()
+
+
+def _run_light_migrations() -> None:
+    """SQLite create_all 은 기존 테이블에 컬럼을 추가하지 않으므로,
+    누락된 컬럼을 ALTER TABLE 로 보강한다(간단한 전진 마이그레이션)."""
+    from sqlalchemy import text
+
+    # (table, column, DDL 타입/기본값)
+    wanted = [
+        ("scenes", "preferred_clip_id", "VARCHAR DEFAULT ''"),
+    ]
+    with _engine.begin() as conn:
+        for table, column, ddl in wanted:
+            cols = {row[1] for row in conn.execute(text(f'PRAGMA table_info("{table}")'))}
+            if column not in cols:
+                conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {column} {ddl}'))
 
 
 def get_session() -> Iterator[Session]:

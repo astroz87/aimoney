@@ -120,6 +120,8 @@ class Scene(Base):
     emotion: Mapped[str] = mapped_column(String, default="neutral")
     pace: Mapped[str] = mapped_column(String, default="normal")
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    # 편집기에서 수동 지정한 컷 (비면 매처 자동 선택)
+    preferred_clip_id: Mapped[str] = mapped_column(String, default="")
 
     project: Mapped["Project"] = relationship(back_populates="scenes")
     tts_result: Mapped["TTSResult | None"] = relationship(

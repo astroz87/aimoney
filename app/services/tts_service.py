@@ -56,3 +56,32 @@ def run_tts(project_id: str, ctx: JobContext, provider: str | None = None) -> No
         if project:
             project.status = "voiced"
     ctx.update(progress=100, log=f"TTS 완료: {n}개 ({used})")
+
+
+def synthesize_scene(project_id: str, scene_no: int, provider: str | None = None) -> dict:
+    """단일 씬의 TTS 만 (재)생성한다. 편집기에서 한 씬을 고쳤을 때 사용.
+
+    Returns {"scene": scene_no, "audio_path": ..., "duration": ...}
+    """
+    with session_scope() as db:
+        scene = db.query(Scene).filter(
+            Scene.project_id == project_id, Scene.scene_no == scene_no
+        ).first()
+        if scene is None:
+            raise RuntimeError("씬을 찾을 수 없습니다")
+        scene_id, text, emotion, pace = scene.id, scene.voice_text, scene.emotion, scene.pace
+
+    tts, used = _resolve_provider(provider)
+    tts_dir = settings.project_dir(project_id) / "tts"
+    tts_dir.mkdir(parents=True, exist_ok=True)
+    out_path = tts_dir / f"scene_{scene_no:03d}.mp3"
+    result = tts.synthesize(text, emotion=emotion, pace=pace, output_path=str(out_path))
+
+    with session_scope() as db:
+        db.query(TTSResult).filter(TTSResult.scene_id == scene_id).delete()
+        db.add(TTSResult(
+            scene_id=scene_id, provider=used,
+            audio_path=result["audio_path"], duration=result["duration"],
+        ))
+    return {"scene": scene_no, "audio_path": result["audio_path"],
+            "duration": result["duration"], "provider": used}

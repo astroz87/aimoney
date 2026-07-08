@@ -133,6 +133,8 @@ class Scene:
     target_duration: float = 3.0
     emotion: str = "neutral"
     pace: str = "normal"
+    # 편집기에서 사용자가 수동 지정한 컷 (비면 매처가 자동 선택)
+    preferred_clip_id: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)

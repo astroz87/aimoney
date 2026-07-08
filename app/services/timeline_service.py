@@ -35,6 +35,7 @@ def build_and_save(project_id: str) -> list[dict]:
             scene=s.scene_no, role=s.role, voice_text=s.voice_text,
             caption_text=s.caption_text, visual_need=s.visual_need,
             target_duration=s.target_duration, emotion=s.emotion, pace=s.pace,
+            preferred_clip_id=getattr(s, "preferred_clip_id", "") or "",
         ) for s in scene_rows]
         clips = [ClipDC(
             clip_id=c.clip_id, source_video=c.source_video, start=c.start, end=c.end,

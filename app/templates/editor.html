@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}씬 편집기 · {{ project.id if project else '' }}{% endblock %}
+{% block content %}
+{% if not project %}
+  <p class="empty">프로젝트를 찾을 수 없습니다. <a href="/">목록으로</a></p>
+{% else %}
+<a href="/projects/{{ project.id }}" class="back">← 프로젝트</a>
+<section class="head-row">
+  <h1>🎬 씬 편집기 — {{ project.product_ko or project.id }}</h1>
+  <div>
+    <button class="btn" onclick="reRender()">재렌더링</button>
+    <span id="ed-job" class="hint"></span>
+  </div>
+</section>
+
+<div id="editor-root" data-pid="{{ project.id }}" class="editor-grid">
+  <!-- 슬라이드(씬) 리스트 -->
+  <div class="slide-col">
+    <div id="slide-list"></div>
+    <button class="btn slide-add" onclick="addScene()">＋ 씬 추가</button>
+  </div>
+
+  <!-- 편집 패널 -->
+  <div class="edit-col">
+    <div id="edit-panel" class="card">
+      <p class="empty">왼쪽에서 씬을 선택하세요.</p>
+    </div>
+    <div class="card">
+      <h3>미리보기</h3>
+      <video id="preview" class="preview-video" controls preload="none"></video>
+      <p class="hint">재렌더링 후 최신 영상이 반영됩니다. (권리 상태가 '확인됨'이어야 렌더 가능)</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/editor.js"></script>
+{% endblock %}

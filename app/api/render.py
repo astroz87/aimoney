@@ -7,8 +7,10 @@ POST /api/projects/{id}/render     → 렌더 잡 시작
 from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from config import settings
 from app.db.database import get_session
 from app.db.models_orm import Project
 from app.schemas import GenericJobResponse
@@ -38,3 +40,13 @@ def render(product_id: str, bg: BackgroundTasks, db: Session = Depends(get_sessi
     job_id = job.id
     bg.add_task(job_service.run_job, job_id, lambda ctx: run_render(product_id, ctx))
     return GenericJobResponse(job_id=job_id, status="pending")
+
+
+@router.get("/preview.mp4")
+def preview(product_id: str, db: Session = Depends(get_session)):
+    if db.get(Project, product_id) is None:
+        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다")
+    final = settings.output_project_dir(product_id) / "final.mp4"
+    if not final.exists():
+        raise HTTPException(status_code=404, detail="아직 렌더된 영상이 없습니다")
+    return FileResponse(str(final), media_type="video/mp4")

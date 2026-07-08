@@ -34,6 +34,14 @@ def project_detail(product_id: str, request: Request, db: Session = Depends(get_
     )
 
 
+@router.get("/projects/{product_id}/editor", response_class=HTMLResponse)
+def editor_page(product_id: str, request: Request, db: Session = Depends(get_session)):
+    project = project_service.get_project(db, product_id)
+    return templates.TemplateResponse(
+        request, "editor.html", {"project": project}
+    )
+
+
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
     return templates.TemplateResponse(

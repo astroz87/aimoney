@@ -54,7 +54,8 @@ def _try_include(module_name: str) -> None:
         pass
 
 
-for _m in ("settings", "jobs", "assets", "analysis", "script", "tts", "render", "packages"):
+for _m in ("settings", "jobs", "assets", "analysis", "script", "tts",
+           "render", "packages", "scenes"):
     _try_include(_m)
 
 # --- 정적 파일 ---

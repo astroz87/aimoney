@@ -51,15 +51,21 @@ def build_timeline(scenes: list[Scene], clips: list[Clip],
     cursor = 0.0
 
     # hook 우선 처리를 위해 정렬(원래 순서 유지하되 hook 먼저 컷 확보)
+    clip_by_id = {c.clip_id: c for c in clips}
     ordered = sorted(scenes, key=lambda s: (s.role != "hook", s.scene))
     assignment: dict[int, Clip] = {}
     for scene in ordered:
-        best = max(clips, key=lambda c: _match_score(scene, c, used))
-        assignment[scene.scene] = best
-        used[best.clip_id] = used.get(best.clip_id, 0) + 1
+        # 편집기에서 수동 지정한 컷이 있으면 우선 사용
+        preferred = getattr(scene, "preferred_clip_id", "") or ""
+        if preferred and preferred in clip_by_id:
+            chosen = clip_by_id[preferred]
+        else:
+            chosen = max(clips, key=lambda c: _match_score(scene, c, used))
+        assignment[scene.scene] = chosen
+        used[chosen.clip_id] = used.get(chosen.clip_id, 0) + 1
 
-    # 원래 scene 순서로 타임라인 구성
-    for scene in sorted(scenes, key=lambda s: s.scene):
+    # 입력 순서(=편집기 order_index) 그대로 타임라인 구성
+    for scene in scenes:
         clip = assignment[scene.scene]
         need = durations.get(scene.scene, scene.target_duration) or scene.target_duration
         avail = max(0.1, clip.end - clip.start)

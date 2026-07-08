@@ -62,6 +62,27 @@ def test_timeline_visual_need_matches_tags():
     assert proof.clip_id == "clip_002"  # before_after 태그 매칭
 
 
+# ---------------- 씬 편집기 (수동 컷/순서) ----------------
+def test_timeline_honors_preferred_clip():
+    scenes = [Scene(scene=1, role="hook", voice_text="a", caption_text="a",
+                    target_duration=3, preferred_clip_id="clip_002")]
+    clips = [_clip("clip_001", 0, 5, hook=0.95), _clip("clip_002", 5, 10, hook=0.1)]
+    tl = build_timeline(scenes, clips, {1: 3.0})
+    # hook_score 상 clip_001 이 유리하지만 수동 지정(clip_002)이 우선
+    assert tl[0].clip_id == "clip_002"
+
+
+def test_timeline_preserves_input_order():
+    # 편집기 재정렬: scene 2 를 먼저 배치
+    scenes = [
+        Scene(scene=2, role="problem", voice_text="b", caption_text="b", target_duration=3),
+        Scene(scene=1, role="hook", voice_text="a", caption_text="a", target_duration=3),
+    ]
+    clips = [_clip("clip_001", 0, 5, hook=0.9), _clip("clip_002", 5, 10, hook=0.5)]
+    tl = build_timeline(scenes, clips, {1: 3.0, 2: 3.0})
+    assert [t.scene for t in tl] == [2, 1]  # 입력 순서 보존
+
+
 # ---------------- 자막 ----------------
 def test_ass_timestamp_format():
     assert _ts(0) == "0:00:00.00"
