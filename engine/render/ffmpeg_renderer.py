@@ -34,8 +34,12 @@ def _hex_to_ff(color: str) -> str:
 
 
 def _scene_clip(spec: dict, out: Path, *, bg_color: str = "#202430",
-                transition: str = "none", transition_duration: float = 0.3) -> Path:
-    """단일 scene 정규화 클립 생성 (배경색/전환/효과음 지원)."""
+                transition: str = "none", transition_duration: float = 0.3,
+                fit_mode: str = "cover") -> Path:
+    """단일 scene 정규화 클립 생성 (배경색/전환/효과음/맞춤모드 지원).
+
+    fit_mode: cover=꽉 채우기(크롭), contain=박스형(배경색 여백에 제목·자막 공간).
+    """
     video_path = spec.get("video_path")
     v_start = float(spec.get("v_start", 0.0))
     v_end = float(spec.get("v_end", 0.0))
@@ -67,12 +71,20 @@ def _scene_clip(spec: dict, out: Path, *, bg_color: str = "#202430",
         sfx_idx = idx
         idx += 1
 
-    # 비디오 필터: 정규화 + (옵션) 페이드 전환
-    vf = (
-        f"scale={W}:{H}:force_original_aspect_ratio=increase,"
-        f"crop={W}:{H},setsar=1,fps={FPS},"
-        f"tpad=stop_mode=clone:stop_duration={pad:.2f}"
-    )
+    # 비디오 필터: 맞춤 모드 → 정규화 + (옵션) 페이드 전환
+    ffcolor = _hex_to_ff(bg_color)
+    if fit_mode == "contain":
+        # 박스형: 전체 폭에 맞춰 축소 후 배경색으로 상/하 여백 → 제목·자막 공간 확보
+        base = (
+            f"scale={W}:{H}:force_original_aspect_ratio=decrease,"
+            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={ffcolor}"
+        )
+    else:
+        base = (
+            f"scale={W}:{H}:force_original_aspect_ratio=increase,"
+            f"crop={W}:{H}"
+        )
+    vf = f"{base},setsar=1,fps={FPS},tpad=stop_mode=clone:stop_duration={pad:.2f}"
     if transition == "fade" and transition_duration > 0:
         d = min(transition_duration, dur / 2)
         st = max(0.0, dur - d)
@@ -123,6 +135,7 @@ def render_video(scene_specs: list[dict], subtitle_path: str | None,
     transition_duration = float(opts.get("transition_duration", 0.3) or 0.3)
     bgm_volume = float(opts.get("bgm_volume", 0.18) or 0.18)
     bgm_enabled = opts.get("bgm_enabled", True)
+    fit_mode = opts.get("fit_mode", "cover")
 
     work = Path(work_dir)
     work.mkdir(parents=True, exist_ok=True)
@@ -135,7 +148,7 @@ def render_video(scene_specs: list[dict], subtitle_path: str | None,
     for i, spec in enumerate(scene_specs):
         cp = _scene_clip(spec, work / f"scene_{i+1:03d}.mp4",
                          bg_color=bg_color, transition=transition,
-                         transition_duration=transition_duration)
+                         transition_duration=transition_duration, fit_mode=fit_mode)
         clip_paths.append(cp)
         if progress_cb:
             progress_cb(int((i + 1) / n * 60))

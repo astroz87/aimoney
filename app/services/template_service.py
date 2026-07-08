@@ -31,6 +31,9 @@ def apply_template(project_id: str, template_id: str) -> dict:
         for k, v in preset.get("edit_settings", {}).items():
             current[k] = v
         current["subtitle_style"] = preset.get("subtitle_style", {})
+        current["title_style"] = preset.get("title_style", {})
+        current["fit_mode"] = preset.get("fit_mode", "cover")
+        current["show_title"] = preset.get("show_title", False)
         current["script_tone"] = preset.get("script_tone", "")
         current["template_id"] = preset["id"]
         project.edit_settings = current

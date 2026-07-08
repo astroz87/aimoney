@@ -28,16 +28,36 @@ DEFAULT_SUBTITLE_STYLE = {
 }
 
 
-def _style_line(style: dict) -> str:
-    s = {**DEFAULT_SUBTITLE_STYLE, **(style or {})}
+# 상단 제목(persistent) 기본 스타일 (레퍼런스 템플릿의 상단 헤드라인)
+DEFAULT_TITLE_STYLE = {
+    "font": "Noto Sans CJK KR",
+    "size": 78,
+    "primary": "&H0000FFFF",      # 노란색
+    "outline_color": "&H00000000",
+    "box_color": "&HFF000000",    # 박스 없음
+    "bold": 1,
+    "border_style": 1,
+    "outline": 4,
+    "shadow": 2,
+    "alignment": 8,               # 상단 중앙
+    "margin_v": 120,
+    "wrap_max": 16,
+}
+
+
+def _style_line(name: str, style: dict, defaults: dict) -> str:
+    s = {**defaults, **(style or {})}
     return (
-        f"Style: Caption,{s['font']},{s['size']},{s['primary']},&H000000FF,"
+        f"Style: {name},{s['font']},{s['size']},{s['primary']},&H000000FF,"
         f"{s['outline_color']},{s['box_color']},{s['bold']},0,0,0,100,100,0,0,"
         f"{s['border_style']},{s['outline']},{s['shadow']},{s['alignment']},60,60,{s['margin_v']},1"
     )
 
 
-def _header(style: dict) -> str:
+def _header(style: dict, title_style: dict | None = None) -> str:
+    style_lines = _style_line("Caption", style, DEFAULT_SUBTITLE_STYLE)
+    if title_style is not None:
+        style_lines += "\n" + _style_line("Title", title_style, DEFAULT_TITLE_STYLE)
     return (
         "[Script Info]\n"
         "ScriptType: v4.00+\n"
@@ -49,7 +69,7 @@ def _header(style: dict) -> str:
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"{_style_line(style)}\n\n"
+        f"{style_lines}\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
@@ -90,14 +110,28 @@ def _wrap_two_lines(text: str, max_chars: int = 16) -> str:
     return text[:mid] + "\\N" + text[mid:]
 
 
-def build_ass(segments: list[dict], out_path: str, *, style: dict | None = None) -> str:
+def build_ass(segments: list[dict], out_path: str, *, style: dict | None = None,
+              title: str = "", title_style: dict | None = None,
+              total_end: float | None = None) -> str:
     """segments: [{start, end, text}] → ASS 파일 작성. 경로 반환.
 
-    text 는 caption_text. style 로 폰트/색/위치 등을 오버라이드(템플릿).
+    text 는 caption_text. style 로 하단 자막 스타일을 오버라이드(템플릿).
+    title 이 있으면 상단에 영상 전체 길이 동안 고정 표시(레퍼런스 템플릿의 상단 제목).
     """
     style = {**DEFAULT_SUBTITLE_STYLE, **(style or {})}
     wrap_max = int(style.get("wrap_max", 16))
-    lines = [_header(style)]
+    show_title = bool(title) and title_style is not None
+    lines = [_header(style, title_style if show_title else None)]
+
+    # 상단 제목 (persistent) — 0 ~ 전체 길이
+    if show_title:
+        end = total_end
+        if end is None:
+            end = max((s.get("end", 0) for s in segments), default=3.0)
+        t_wrap = int((title_style or {}).get("wrap_max", 16))
+        ttext = _wrap_two_lines(str(title), max_chars=t_wrap).replace("\n", "\\N")
+        lines.append(f"Dialogue: 0,{_ts(0.0)},{_ts(end)},Title,,0,0,0,,{ttext}")
+
     for seg in segments:
         text = _wrap_two_lines(str(seg.get("text", "")), max_chars=wrap_max)
         text = text.replace("\n", "\\N")

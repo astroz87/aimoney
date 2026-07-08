@@ -20,8 +20,80 @@ async function load() {
   renderSlides();
   renderPanel();
   loadAudioPanel();
+  loadTextPanel();
   loadTemplates();
 }
+
+// ---- ASS 색상(&HAABBGGRR) ↔ #RRGGBB ----
+function assToHex(ass) {
+  const m = /&H[0-9A-Fa-f]{2}([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})/.exec(ass || "");
+  if (!m) return "#ffffff";
+  return "#" + m[3] + m[2] + m[1]; // BGR→RGB
+}
+function hexToAss(hex) {
+  const h = (hex || "#ffffff").replace("#", "");
+  return "&H00" + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2); // RGB→BGR
+}
+
+// ---- 자막·제목 스타일 (일괄 적용) ----
+async function loadTextPanel() {
+  let s;
+  try { s = await api("GET", `/api/projects/${PID}/edit-settings`); }
+  catch { return; }
+  STATE.textcfg = s;
+  const cap = s.subtitle_style || {};
+  const ttl = s.title_style || {};
+  const box = document.getElementById("text-panel");
+  box.innerHTML = `
+    <div class="grid2">
+      <label>영상 맞춤
+        <select id="t-fit">
+          <option value="cover" ${s.fit_mode !== 'contain' ? 'selected' : ''}>꽉 채우기</option>
+          <option value="contain" ${s.fit_mode === 'contain' ? 'selected' : ''}>박스형(제목·자막 공간)</option>
+        </select>
+      </label>
+      <label>자막 위치
+        <select id="t-align">
+          <option value="2" ${(cap.alignment||2)==2?'selected':''}>하단</option>
+          <option value="5" ${cap.alignment==5?'selected':''}>중앙</option>
+          <option value="8" ${cap.alignment==8?'selected':''}>상단</option>
+        </select>
+      </label>
+      <label>자막 크기<input id="t-size" type="number" min="30" max="120" value="${cap.size||60}"></label>
+      <label>자막 색<input id="t-color" type="color" value="${assToHex(cap.primary||'&H00FFFFFF')}"></label>
+      <label><input id="t-box" type="checkbox" ${(cap.box_color&&cap.box_color!=='&HFF000000')?'checked':''}> 자막 배경박스</label>
+      <label>하단 여백<input id="t-mv" type="number" min="40" max="500" value="${cap.margin_v||220}"></label>
+    </div>
+    <hr style="border-color:var(--line);margin:10px 0">
+    <label><input id="t-showtitle" type="checkbox" ${s.show_title?'checked':''}> 상단 고정 제목 표시</label>
+    <div class="grid2">
+      <label>제목 문구<input id="t-title" value="${(s.title_text||'').replace(/"/g,'&quot;')}" placeholder="비우면 첫 자막/상품명"></label>
+      <label>제목 색<input id="t-tcolor" type="color" value="${assToHex(ttl.primary||'&H0000FFFF')}"></label>
+    </div>
+    <div class="panel-ops">
+      <button class="btn primary" onclick="saveTextStyle()">모든 자막에 일괄 적용</button>
+      <span id="text-msg" class="hint"></span>
+    </div>`;
+}
+
+async function saveTextStyle() {
+  const cap = { ...(STATE.textcfg.subtitle_style || {}) };
+  cap.size = parseInt(val("t-size")); cap.primary = hexToAss(val("t-color"));
+  cap.alignment = parseInt(val("t-align")); cap.margin_v = parseInt(val("t-mv"));
+  cap.box_color = document.getElementById("t-box").checked ? "&H80000000" : "&HFF000000";
+  cap.border_style = document.getElementById("t-box").checked ? 3 : 1;
+  const ttl = { ...(STATE.textcfg.title_style || {}) };
+  ttl.primary = hexToAss(val("t-tcolor"));
+  const body = {
+    fit_mode: val("t-fit"),
+    show_title: document.getElementById("t-showtitle").checked,
+    title_text: val("t-title"),
+    subtitle_style: cap, title_style: ttl,
+  };
+  try { await api("PUT", `/api/projects/${PID}/edit-settings`, body); txtMsg("적용됨 ✓ 재렌더링하면 반영"); loadTextPanel(); }
+  catch (e) { txtMsg("실패: " + e.message); }
+}
+const txtMsg = (m) => { const e = document.getElementById("text-msg"); if (e) e.textContent = m; };
 
 // ---- 템플릿 ----
 let TEMPLATES = [];

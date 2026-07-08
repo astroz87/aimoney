@@ -137,6 +137,23 @@ def test_build_ass_writes_dialogue(tmp_path):
     assert "PlayResY: 1920" in content
 
 
+def test_build_ass_renders_persistent_title(tmp_path):
+    out = tmp_path / "s.ass"
+    build_ass([{"start": 0, "end": 3, "text": "자막"}], str(out),
+              title="상단 제목", title_style={"primary": "&H0000FFFF"}, total_end=3.0)
+    content = out.read_text(encoding="utf-8")
+    assert "Style: Title" in content
+    assert ",Title,," in content       # 제목 Dialogue 존재
+    assert "상단 제목" in content
+
+
+def test_build_ass_no_title_when_style_absent(tmp_path):
+    out = tmp_path / "s.ass"
+    build_ass([{"start": 0, "end": 3, "text": "자막"}], str(out), title="무시됨")
+    content = out.read_text(encoding="utf-8")
+    assert "Style: Title" not in content  # title_style 없으면 제목 미표시
+
+
 def test_build_ass_applies_template_style(tmp_path):
     out = tmp_path / "s.ass"
     build_ass([{"start": 0, "end": 2, "text": "x"}], str(out),
@@ -149,15 +166,20 @@ def test_build_ass_applies_template_style(tmp_path):
 # ---------------- 템플릿 프리셋 ----------------
 def test_template_presets_have_required_fields():
     ids = {t["id"] for t in list_presets()}
-    assert {"info", "review", "before_after", "hook"} <= ids
-    p = get_preset("review")
+    assert {"basic", "issue_card", "drama_mint", "review"} <= ids
+    p = get_preset("drama_mint")
     assert p["subtitle_style"]["primary"] and "edit_settings" in p
+    assert p["fit_mode"] == "contain" and p["show_title"] is True
+    # 기본(자막만)은 cover + 제목 없음
+    b = get_preset("basic")
+    assert b["fit_mode"] == "cover" and b["show_title"] is False
     assert get_preset("nope") is None
 
 
 def test_style_line_reflects_overrides():
-    line = _style_line({"size": 99, "alignment": 8})
-    assert ",99," in line
+    from engine.subtitle.ass_builder import DEFAULT_SUBTITLE_STYLE
+    line = _style_line("Caption", {"size": 99, "alignment": 8}, DEFAULT_SUBTITLE_STYLE)
+    assert ",99," in line and line.startswith("Style: Caption,")
 
 
 # ---------------- 경제적 이해관계 문구 ----------------

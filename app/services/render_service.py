@@ -52,9 +52,27 @@ def run_render(project_id: str, ctx: JobContext) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     work_dir = settings.project_dir(project_id) / "render_tmp"
 
-    # --- 자막 (템플릿 스타일 반영) ---
+    # --- 상단 제목 결정 (edit_settings.title_text → 없으면 hook 자막 → 상품명) ---
+    title_text = ""
+    if edit_opts.get("show_title"):
+        title_text = (edit_opts.get("title_text") or "").strip()
+        if not title_text and sub_segments:
+            title_text = sub_segments[0].get("text", "")
+        if not title_text:
+            with session_scope() as db:
+                proj = db.get(Project, project_id)
+                title_text = proj.product_ko if proj else ""
+
+    # --- 자막 (템플릿 스타일 + 상단 제목 반영) ---
+    total_end = max((s["end"] for s in sub_segments), default=0.0)
     ass_path = out_dir / "subtitle.ass"
-    build_ass(sub_segments, str(ass_path), style=edit_opts.get("subtitle_style") or None)
+    build_ass(
+        sub_segments, str(ass_path),
+        style=edit_opts.get("subtitle_style") or None,
+        title=title_text,
+        title_style=(edit_opts.get("title_style") if edit_opts.get("show_title") else None),
+        total_end=total_end,
+    )
     build_srt(sub_segments, str(out_dir / "subtitle.srt"))
 
     # --- 렌더 ---

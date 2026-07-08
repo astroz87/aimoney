@@ -54,6 +54,12 @@ class EditSettingsUpdate(BaseModel):
     bgm_volume: float | None = None
     transition: str | None = None            # none | fade
     transition_duration: float | None = None
+    # 레이아웃/제목/자막 스타일 (자막 스타일은 모든 자막에 일괄 적용됨)
+    fit_mode: str | None = None              # cover | contain
+    show_title: bool | None = None
+    title_text: str | None = None
+    subtitle_style: dict | None = None
+    title_style: dict | None = None
 
 
 @router.get("/edit-settings")
@@ -74,6 +80,8 @@ def update_edit_settings(
         current[k] = v
     if current.get("transition") not in ("none", "fade"):
         current["transition"] = "none"
+    if current.get("fit_mode") not in ("cover", "contain"):
+        current["fit_mode"] = "cover"
     current["bgm_volume"] = max(0.0, min(1.0, float(current.get("bgm_volume", 0.18))))
     current["transition_duration"] = max(0.0, min(2.0, float(current.get("transition_duration", 0.3))))
     p.edit_settings = current

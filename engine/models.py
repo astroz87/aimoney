@@ -54,6 +54,11 @@ DEFAULT_EDIT_SETTINGS = {
     "bgm_volume": 0.18,           # BGM 볼륨 (0~1)
     "transition": "none",         # none | fade
     "transition_duration": 0.3,   # 전환 길이(초)
+    # --- 레이아웃/제목 ---
+    "fit_mode": "cover",          # cover=꽉채우기 | contain=박스형
+    "show_title": False,          # 상단 제목 표시 여부
+    "title_text": "",             # 상단 제목 문구 (비면 hook 자막/상품명)
+    "title_style": {},            # 상단 제목 스타일
     # --- 템플릿(스타일 프리셋) ---
     "template_id": "",            # 적용된 템플릿 id
     "subtitle_style": {},         # ASS 자막 스타일 오버라이드 (비면 기본)
