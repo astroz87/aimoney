@@ -206,6 +206,19 @@ class Job(Base):
     project: Mapped["Project"] = relationship(back_populates="jobs")
 
 
+class ClickEvent(Base):
+    """트래킹 링크(/go/{slug}) 클릭 로그 — 성과 집계용."""
+
+    __tablename__ = "click_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String, index=True)
+    platform: Mapped[str] = mapped_column(String, default="")   # ?src= 값
+    provider: Mapped[str] = mapped_column(String, default="")   # 리다이렉트된 프로바이더
+    target_url: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class Setting(Base):
     """런타임 설정 (LLM/TTS 프로바이더·모델·키). DB > .env > 기본값."""
 

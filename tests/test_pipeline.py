@@ -412,3 +412,21 @@ def test_clamp_clip_range():
     assert _clamp_clip_range(3.0, 3.05) == (3.0, 3.2)          # 최소 길이 0.2s
     assert _clamp_clip_range(2.0, 99.0, src_dur=10.0) == (2.0, 10.0)  # 원본 길이 클램프
     assert _clamp_clip_range(9.95, 99.0, src_dur=10.0) == (9.8, 10.0) # start 도 클램프
+
+
+# ---------------- 쿠팡 딥링크 인증 헤더 / 트래킹 링크 우선순위 (어필리에이트 성과 집계) ----------------
+def test_coupang_auth_header_format():
+    from datetime import datetime, timezone
+    from engine.package.coupang_api import _auth_header
+    h = _auth_header("POST", "/v2/x", "", "AK", "SK", now=datetime(2026, 7, 8, 12, 0, 0, tzinfo=timezone.utc))
+    assert h.startswith("CEA algorithm=HmacSHA256, access-key=AK, signed-date=260708T120000Z, signature=")
+    assert len(h.split("signature=")[1]) == 64  # sha256 hex
+
+def test_pick_link_respects_priority():
+    from app.api.go import _pick_link
+    class R:  # 간단 스텁
+        def __init__(self, provider, raw_url): self.provider, self.raw_url = provider, raw_url
+    rows = [R("musinsa", "https://m"), R("coupang", "https://c")]
+    assert _pick_link(rows, ["coupang", "ohouse"]).provider == "coupang"
+    assert _pick_link([R("musinsa", "https://m")], ["coupang"]).provider == "musinsa"  # 우선순위 밖도 폴백
+    assert _pick_link([], ["coupang"]) is None

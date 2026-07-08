@@ -19,6 +19,7 @@ from engine.package import build_packages
 from engine.thumbnail import make_thumbnail
 from app.db.database import session_scope
 from app.db.models_orm import (
+    AffiliateLink,
     Clip as ClipORM,
     Project,
     Render,
@@ -49,6 +50,13 @@ def run_package(project_id: str, ctx: JobContext) -> None:
             render and render.status == "done"
             and render.video_path and Path(render.video_path).exists()
         )
+        affiliate_raw_urls = {
+            row.provider: row.raw_url
+            for row in db.query(AffiliateLink).filter(
+                AffiliateLink.project_id == project_id
+            ).all()
+            if row.raw_url
+        }
 
     if not scenes:
         raise RuntimeError("대본이 없습니다")
@@ -83,6 +91,7 @@ def run_package(project_id: str, ctx: JobContext) -> None:
         scenes=scenes,
         out_dir=str(out_dir),
         link_router_base=settings.link_router_base,
+        affiliate_raw_urls=affiliate_raw_urls,
     )
     if not summary.get("disclosure_ok"):
         raise RuntimeError("경제적 이해관계 표시 문구 삽입 검증 실패 — 패키지 중단")

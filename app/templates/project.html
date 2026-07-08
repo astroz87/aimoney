@@ -80,6 +80,18 @@
   </table>
 </section>
 
+<!-- 어필리에이트 링크 -->
+<div class="card" id="affiliate-card">
+  <h3>🔗 어필리에이트 링크 · 성과</h3>
+  <p class="hint">프로바이더별 실제 구매 링크(원본/딥링크)를 등록하면 /go/{slug} 트래킹 링크가 여기로 리다이렉트되고 클릭이 집계됩니다. 본문에는 트래킹 링크만 들어갑니다.</p>
+  <div id="aff-links"><p class="hint">불러오는 중...</p></div>
+  <div class="panel-ops">
+    <button class="btn primary" onclick="saveAffLinks()">링크 저장</button>
+    <span id="aff-msg" class="hint"></span>
+  </div>
+  <div id="aff-stats" class="hint" style="margin-top:8px"></div>
+</div>
+
 <!-- 후킹 컷 -->
 <section class="card">
   <h3>후킹 컷 (hook_score 순)</h3>

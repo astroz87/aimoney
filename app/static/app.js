@@ -1,3 +1,10 @@
+// HTML escape 헬퍼
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
 // 공통 fetch 헬퍼
 async function api(method, path, body) {
   const opts = { method, headers: { "Content-Type": "application/json" } };
@@ -144,3 +151,72 @@ async function testProvider(provider) {
     alert(`${provider}: ${r.ok ? "연결 성공 ✓" : "실패"} ${r.detail || ""}`);
   } catch (e) { alert(`${provider} 테스트 실패: ` + e.message); }
 }
+
+// --- 어필리에이트 링크 관리 / 성과 ---
+let AFF_SLUG = "";
+
+async function loadAffLinks() {
+  const box = document.getElementById("aff-links");
+  if (!box) return;
+  try {
+    const r = await api("GET", `/api/projects/${pid()}/affiliate-links`);
+    const links = Array.isArray(r) ? r : (r.links || []);
+    AFF_SLUG = (!Array.isArray(r) && r.slug) ? r.slug : (pid() || "");
+    box.innerHTML = links.map(l => `
+      <div class="aff-row">
+        <label>${esc(l.label || l.provider)} (${esc(l.provider)})
+          <input data-provider="${esc(l.provider)}" value="${esc(l.raw_url)}" placeholder="실제 구매/파트너스 링크 URL">
+        </label>
+        ${l.provider === "coupang" ? `<button class="btn tiny" onclick="coupangDeeplink()">딥링크 발급</button>` : ""}
+        <div class="mono hint">${esc(l.tracking_url)}</div>
+      </div>
+    `).join("") || `<p class="hint">등록된 프로바이더 없음</p>`;
+    loadAffStats();
+  } catch (e) {
+    box.innerHTML = `<p class="hint">불러오기 실패: ${esc(e.message)}</p>`;
+  }
+}
+
+async function saveAffLinks() {
+  const msg = document.getElementById("aff-msg");
+  const inputs = document.querySelectorAll("#aff-links input[data-provider]");
+  const links = Array.from(inputs).map(el => ({ provider: el.dataset.provider, raw_url: el.value }));
+  try {
+    await api("PUT", `/api/projects/${pid()}/affiliate-links`, { links });
+    if (msg) msg.textContent = "저장됨 ✓";
+    loadAffLinks();
+  } catch (e) {
+    if (msg) msg.textContent = "실패: " + e.message;
+  }
+}
+
+async function coupangDeeplink() {
+  const msg = document.getElementById("aff-msg");
+  const url = prompt("쿠팡 상품 원본 URL:");
+  if (!url) return;
+  try {
+    const r = await api("POST", `/api/projects/${pid()}/affiliate-links/coupang-deeplink`, { url });
+    const input = document.querySelector('#aff-links input[data-provider="coupang"]');
+    if (input) input.value = r.raw_url;
+    if (msg) msg.textContent = "딥링크 발급됨 ✓";
+  } catch (e) {
+    if (msg) msg.textContent = "딥링크 발급 실패: " + e.message;
+  }
+}
+
+async function loadAffStats() {
+  const box = document.getElementById("aff-stats");
+  if (!box || !AFF_SLUG) return;
+  try {
+    const r = await api("GET", `/api/stats/clicks?slug=${encodeURIComponent(AFF_SLUG)}`);
+    if (!r || !r.length) {
+      box.textContent = "아직 클릭 없음";
+      return;
+    }
+    box.textContent = "플랫폼별 클릭: " + r.map(s => `${s.platform} ${s.clicks}`).join(" · ");
+  } catch (e) {
+    box.textContent = "성과 불러오기 실패: " + e.message;
+  }
+}
+
+if (document.getElementById("affiliate-card") && pid()) loadAffLinks();

@@ -91,6 +91,18 @@
     <p class="hint">Pexels 무료 라이선스(상업적 사용 가능). 키는 pexels.com/api 에서 발급.</p>
   </section>
 
+  <section class="card">
+    <h3>쿠팡 파트너스 · 링크 라우터</h3>
+    <div class="grid2">
+      <label>Access Key<input name="coupang_access_key" value="{{ settings.coupang_access_key }}" placeholder="쿠팡 파트너스 Open API Access Key"></label>
+      <label>Secret Key<input name="coupang_secret_key" value="{{ settings.coupang_secret_key }}" placeholder="Secret Key"></label>
+      <label>파트너 태그<input name="coupang_partner_tag" value="{{ settings.coupang_partner_tag }}" placeholder="AF1234567"></label>
+      <label>링크 라우터 베이스<input name="link_router_base" value="{{ settings.link_router_base }}" placeholder="http://127.0.0.1:8000/go"></label>
+    </div>
+    <p class="hint">딥링크 발급은 프로젝트 상세 → 어필리에이트 링크 카드에서.
+      라우터 베이스를 이 서버(<span class="mono">http://127.0.0.1:8000/go</span>)로 두면 /go 리다이렉트와 클릭 집계가 로컬에서 동작합니다.</p>
+  </section>
+
   <button class="btn primary" type="submit">저장</button>
   <span id="save-status" class="hint"></span>
 </form>

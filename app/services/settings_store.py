@@ -35,10 +35,17 @@ _KEYS: dict[str, str | None] = {
     # TTS 옵션
     "tts_voice": None,
     "link_router_base": "link_router_base",
+    # 쿠팡 파트너스
+    "coupang_access_key": "coupang_access_key",
+    "coupang_secret_key": "coupang_secret_key",
+    "coupang_partner_tag": "coupang_partner_tag",
 }
 
 # 마스킹 대상 키 (부분 노출)
-_SECRET_KEYS = {"anthropic_api_key", "gemini_api_key", "openai_api_key", "pexels_api_key"}
+_SECRET_KEYS = {
+    "anthropic_api_key", "gemini_api_key", "openai_api_key", "pexels_api_key",
+    "coupang_access_key", "coupang_secret_key",
+}
 
 
 def _env_default(key: str) -> str:
