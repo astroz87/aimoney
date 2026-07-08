@@ -6,6 +6,7 @@ POST /api/projects/{id}/assets/register  (로컬 경로 또는 URL 등록/다운
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -44,6 +45,14 @@ async def upload_videos(
     for uf in files:
         safe_name = Path(uf.filename or "video.mp4").name
         dest = raw_dir / safe_name
+        if dest.exists():
+            # 동일 이름 재업로드 시 기존 파일을 덮어쓰지 않도록 서픽스를 붙인다.
+            stem, suffix = Path(safe_name).stem, Path(safe_name).suffix
+            n = 2
+            while (raw_dir / f"{stem}_{n}{suffix}").exists():
+                n += 1
+            safe_name = f"{stem}_{n}{suffix}"
+            dest = raw_dir / safe_name
         with open(dest, "wb") as f:
             shutil.copyfileobj(uf.file, f)
         asset = SourceAsset(
@@ -81,7 +90,7 @@ def register_asset(
 
     if payload.download and payload.source_url:
         raw_dir = settings.project_dir(product_id) / "raw"
-        fname = f"dl_{abs(hash(payload.source_url)) % 10**8}.mp4"
+        fname = f"dl_{hashlib.md5(payload.source_url.encode()).hexdigest()[:12]}.mp4"
         try:
             dest = download_video(payload.source_url, raw_dir / fname)
         except Exception as exc:  # noqa: BLE001

@@ -83,14 +83,10 @@ def _header(style: dict, title_style: dict | None = None) -> str:
 
 def _ts(seconds: float) -> str:
     """초 → ASS 타임스탬프 h:mm:ss.cs"""
-    seconds = max(0.0, seconds)
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    cs = int(round((seconds - int(seconds)) * 100))
-    if cs == 100:
-        cs = 0
-        s += 1
+    total_cs = max(0, round(seconds * 100))
+    cs = total_cs % 100
+    total_s = total_cs // 100
+    h, m, s = total_s // 3600, (total_s % 3600) // 60, total_s % 60
     return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
 

@@ -386,3 +386,19 @@ def test_llm_parse_clamps_target_duration():
     )
     assert scenes[0].target_duration == 15.0
     assert scenes[1].target_duration == 1.0
+
+
+# ---------------- ASS 타임스탬프 반올림 (백엔드 결함 수정) ----------------
+def test_ass_ts_rounds_to_valid_timestamp():
+    from engine.subtitle.ass_builder import _ts
+
+    assert _ts(59.999) == "0:01:00.00"  # 59.999초는 60.00초가 아니라 다음 분으로 반올림
+    assert _ts(0.0) == "0:00:00.00"
+    assert _ts(3661.5) == "1:01:01.50"
+
+
+# ---------------- SceneOut order_index 노출 (백엔드 결함 수정) ----------------
+def test_scene_out_exposes_order_index():
+    from app.schemas import SceneOut
+
+    assert "order_index" in SceneOut.model_fields

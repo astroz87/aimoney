@@ -32,7 +32,7 @@ def update_scene(db, project_id: str, scene_no: int, fields: dict) -> SceneORM |
     for key, value in fields.items():
         if key in _EDITABLE and value is not None:
             if key == "target_duration":
-                value = max(0.5, float(value))
+                value = min(15.0, max(1.0, float(value)))
             setattr(scene, key, value)
     db.flush()
     _snapshot(db, project_id)

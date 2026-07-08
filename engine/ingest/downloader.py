@@ -44,7 +44,10 @@ def _download_m3u8(url: str, dest: Path) -> Path:
         "ffmpeg", "-y", "-user_agent", _UA, "-i", url,
         "-c", "copy", "-bsf:a", "aac_adtstoasc", str(dest),
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("m3u8 다운로드 시간 초과(600s)")
     if proc.returncode != 0 or not dest.exists():
         raise RuntimeError(f"m3u8 다운로드 실패: {proc.stderr[-400:]}")
     return dest

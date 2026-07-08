@@ -4,6 +4,10 @@
 const PID = document.getElementById("editor-root")?.dataset.pid;
 let STATE = { scenes: [], clips: [], selected: null };
 
+// LLM/사용자 텍스트를 innerHTML 에 안전하게 삽입하기 위한 이스케이프
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
 async function api(method, path, body) {
   const opts = { method, headers: { "Content-Type": "application/json" } };
   if (body !== undefined) opts.body = JSON.stringify(body);
@@ -14,7 +18,8 @@ async function api(method, path, body) {
 
 async function load() {
   const p = await api("GET", `/api/projects/${PID}`);
-  STATE.scenes = (p.scenes || []).slice().sort((a, b) => a.scene_no - b.scene_no);
+  // order_index 순으로 정렬 (서버 렌더 순서와 일치). 구버전 응답 대비 scene_no 폴백.
+  STATE.scenes = (p.scenes || []).slice().sort((a, b) => (a.order_index ?? a.scene_no) - (b.order_index ?? b.scene_no));
   STATE.clips = (p.clips || []).slice().sort((a, b) => b.hook_score - a.hook_score);
   if (STATE.selected == null && STATE.scenes.length) STATE.selected = STATE.scenes[0].scene_no;
   renderSlides();
@@ -68,7 +73,7 @@ async function loadTextPanel() {
     <hr style="border-color:var(--line);margin:10px 0">
     <label><input id="t-showtitle" type="checkbox" ${s.show_title?'checked':''}> 상단 고정 제목 표시</label>
     <div class="grid2">
-      <label>제목 문구<input id="t-title" value="${(s.title_text||'').replace(/"/g,'&quot;')}" placeholder="비우면 첫 자막/상품명"></label>
+      <label>제목 문구<input id="t-title" value="${esc(s.title_text)}" placeholder="비우면 첫 자막/상품명"></label>
       <label>제목 색<input id="t-tcolor" type="color" value="${assToHex(ttl.primary||'&H0000FFFF')}"></label>
     </div>
     <div class="panel-ops">
@@ -112,7 +117,7 @@ function fillTemplateSelect() {
   if (!sel) return;
   const cur = (STATE.audio && STATE.audio.template_id) || "";
   sel.innerHTML = TEMPLATES.map(t =>
-    `<option value="${t.id}" ${t.id === cur ? "selected" : ""}>${t.is_custom ? '★ ' : ''}${t.name}</option>`).join("");
+    `<option value="${t.id}" ${t.id === cur ? "selected" : ""}>${t.is_custom ? '★ ' : ''}${esc(t.name)}</option>`).join("");
   showTplDesc();
   sel.onchange = showTplDesc;
 }
@@ -260,7 +265,7 @@ function renderSlides() {
       <div class="slide-thumb">${thumb ? `<img src="${thumb}" loading="lazy">` : ""}<span class="slide-dur">${(s.target_duration || 0).toFixed(1)}s</span></div>
       <div class="slide-meta">
         <span class="tag">#${i + 1} ${s.role}</span>
-        <div class="slide-cap">${s.caption_text || "(자막 없음)"}</div>
+        <div class="slide-cap">${esc(s.caption_text) || "(자막 없음)"}</div>
       </div>
       <div class="slide-ops">
         <button title="위로" onclick="move(${s.scene_no},-1);event.stopPropagation()">▲</button>
@@ -291,9 +296,9 @@ function renderPanel() {
       <label>감정<select id="f-emotion">${emotions.map(e => `<option ${s.emotion === e ? "selected" : ""}>${e}</option>`).join("")}</select></label>
       <label>속도<select id="f-pace">${paces.map(p => `<option ${s.pace === p ? "selected" : ""}>${p}</option>`).join("")}</select></label>
     </div>
-    <label>🎙 나레이션(voice_text)<textarea id="f-voice" rows="2">${s.voice_text || ""}</textarea></label>
-    <label>💬 자막(caption_text)<textarea id="f-caption" rows="2">${s.caption_text || ""}</textarea></label>
-    <label>연출 메모(visual_need)<input id="f-need" value="${s.visual_need || ""}"></label>
+    <label>🎙 나레이션(voice_text)<textarea id="f-voice" rows="2">${esc(s.voice_text)}</textarea></label>
+    <label>💬 자막(caption_text)<textarea id="f-caption" rows="2">${esc(s.caption_text)}</textarea></label>
+    <label>연출 메모(visual_need)<input id="f-need" value="${esc(s.visual_need)}"></label>
     <label>컷 지정<select id="f-clip"><option value="">자동 매칭</option>${clipOpts}</select></label>
     <div class="panel-ops">
       <button class="btn primary" onclick="saveScene()">저장</button>

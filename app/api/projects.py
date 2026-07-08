@@ -55,9 +55,9 @@ def get_project(product_id: str, db: Session = Depends(get_session)):
     project = project_service.get_project(db, product_id)
     if project is None:
         raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다")
-    # scene_no 순 정렬된 scenes 를 위해 detail 은 관계 로딩에 의존
+    # order_index 순 정렬된 scenes 를 위해 detail 은 관계 로딩에 의존
     detail = ProjectDetailOut.model_validate(project)
-    detail.scenes.sort(key=lambda s: s.scene_no)
+    detail.scenes.sort(key=lambda s: s.order_index)
     detail.clips.sort(key=lambda c: c.hook_score, reverse=True)
     return detail
 

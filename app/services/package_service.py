@@ -24,7 +24,6 @@ from app.db.models_orm import (
     Render,
     Scene as SceneORM,
     SourceAsset,
-    TimelineItem as TLORM,
 )
 from app.services.job_service import JobContext
 
@@ -114,9 +113,6 @@ def _make_thumb(project_id: str, out_dir: Path, scenes: list[dict]) -> None:
         at = 0.0
         if top:
             at = top.start
-            tl = db.query(TLORM).filter(
-                TLORM.project_id == project_id, TLORM.clip_id == top.clip_id
-            ).first()
             if top.source_asset_id:
                 a = db.get(SourceAsset, top.source_asset_id)
                 if a and a.local_path:

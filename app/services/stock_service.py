@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 
 from config import settings
@@ -36,7 +37,7 @@ def import_video(project_id: str, video_url: str, *, source_id: str = "",
         raise RuntimeError("영상 URL 이 없습니다 (mock 프로바이더는 삽입 불가)")
 
     raw_dir = settings.project_dir(project_id) / "raw"
-    fname = f"stock_{abs(hash(video_url)) % 10**8}.mp4"
+    fname = f"stock_{hashlib.md5(video_url.encode()).hexdigest()[:12]}.mp4"
     dest = download_video(video_url, raw_dir / fname)
 
     with session_scope() as db:

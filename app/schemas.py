@@ -76,6 +76,7 @@ class ClipOut(BaseModel):
 
 class SceneOut(BaseModel):
     scene_no: int
+    order_index: int = 0
     role: str
     voice_text: str
     caption_text: str
