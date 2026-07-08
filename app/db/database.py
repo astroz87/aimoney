@@ -46,6 +46,8 @@ def _run_light_migrations() -> None:
     # (table, column, DDL 타입/기본값)
     wanted = [
         ("scenes", "preferred_clip_id", "VARCHAR DEFAULT ''"),
+        ("scenes", "sfx_path", "VARCHAR DEFAULT ''"),
+        ("projects", "edit_settings", "JSON DEFAULT '{}'"),
     ]
     with _engine.begin() as conn:
         for table, column, ddl in wanted:

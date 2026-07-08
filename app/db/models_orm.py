@@ -41,6 +41,8 @@ class Project(Base):
     zh_search_queries: Mapped[list] = mapped_column(JSON, default=list)
     usage_status: Mapped[str] = mapped_column(String, default=USAGE_UNKNOWN)
     status: Mapped[str] = mapped_column(String, default="created")
+    # 오디오/배경 편집 설정 (bg_color/bgm_path/bgm_volume/bgm_enabled/transition/transition_duration)
+    edit_settings: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -122,6 +124,8 @@ class Scene(Base):
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     # 편집기에서 수동 지정한 컷 (비면 매처 자동 선택)
     preferred_clip_id: Mapped[str] = mapped_column(String, default="")
+    # 씬별 효과음 파일 경로 (선택)
+    sfx_path: Mapped[str] = mapped_column(String, default="")
 
     project: Mapped["Project"] = relationship(back_populates="scenes")
     tts_result: Mapped["TTSResult | None"] = relationship(

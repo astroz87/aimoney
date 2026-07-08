@@ -83,6 +83,8 @@ class SceneOut(BaseModel):
     target_duration: float
     emotion: str
     pace: str
+    preferred_clip_id: str = ""
+    sfx_path: str = ""
 
     class Config:
         from_attributes = True

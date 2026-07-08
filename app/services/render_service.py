@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 from config import settings
-from engine.models import USAGE_CLEARED
+from engine.models import USAGE_CLEARED, resolve_edit_settings
 from engine.render import render_video
 from engine.subtitle import build_ass, build_srt
 from app.db.database import session_scope
@@ -33,6 +33,7 @@ def run_render(project_id: str, ctx: JobContext) -> None:
                 f"권리 미확인: usage_status='{project.usage_status}'. "
                 "'확인됨' 으로 변경해야 렌더링할 수 있습니다."
             )
+        edit_opts = resolve_edit_settings(project.edit_settings)
 
     # --- 타임라인 보장 (없으면 생성) ---
     with session_scope() as db:
@@ -63,8 +64,10 @@ def run_render(project_id: str, ctx: JobContext) -> None:
     def _pcb(p):
         ctx.update(progress=15 + int(p * 0.8), log=f"렌더링 {p}%")
 
+    bgm_path = edit_opts.get("bgm_path") or None
     result = render_video(specs, str(ass_path), str(out_path),
-                          str(work_dir), progress_cb=_pcb)
+                          str(work_dir), bgm_path=bgm_path, opts=edit_opts,
+                          progress_cb=_pcb)
 
     with session_scope() as db:
         db.query(Render).filter(Render.project_id == project_id).delete()
@@ -97,11 +100,12 @@ def _collect_specs(project_id: str):
                     path = a.local_path
             clip_paths[c.clip_id] = path or ""
 
-        # scene_no → caption_text
-        captions = {
-            s.scene_no: s.caption_text
-            for s in db.query(SceneORM).filter(SceneORM.project_id == project_id).all()
-        }
+        # scene_no → (caption_text, sfx_path)
+        captions = {}
+        sfx = {}
+        for s in db.query(SceneORM).filter(SceneORM.project_id == project_id).all():
+            captions[s.scene_no] = s.caption_text
+            sfx[s.scene_no] = getattr(s, "sfx_path", "") or ""
 
         specs = []
         segments = []
@@ -112,6 +116,7 @@ def _collect_specs(project_id: str):
                 "v_start": it.video_start,
                 "v_end": it.video_end,
                 "audio_path": it.audio_path,
+                "sfx_path": sfx.get(it.scene_no, ""),
                 "duration": dur,
             })
             segments.append({

@@ -9,6 +9,8 @@ from engine.models import Clip, Scene
 from engine.timeline import build_timeline
 from engine.tts.factory import get_tts_provider
 from engine.tts.mock_provider import MockTTSProvider
+from engine.models import resolve_edit_settings, DEFAULT_EDIT_SETTINGS
+from engine.render.ffmpeg_renderer import _hex_to_ff
 from app.services.project_service import _en_slug
 from engine.subtitle.ass_builder import build_ass, _ts, _wrap_two_lines
 from engine.package.disclosure import DISCLOSURE_TEXT, prepend_disclosure
@@ -81,6 +83,22 @@ def test_timeline_preserves_input_order():
     clips = [_clip("clip_001", 0, 5, hook=0.9), _clip("clip_002", 5, 10, hook=0.5)]
     tl = build_timeline(scenes, clips, {1: 3.0, 2: 3.0})
     assert [t.scene for t in tl] == [2, 1]  # 입력 순서 보존
+
+
+# ---------------- 오디오/배경 편집 설정 ----------------
+def test_resolve_edit_settings_fills_defaults():
+    s = resolve_edit_settings(None)
+    assert s == DEFAULT_EDIT_SETTINGS
+    s2 = resolve_edit_settings({"transition": "fade", "bgm_volume": 0.3})
+    assert s2["transition"] == "fade" and s2["bgm_volume"] == 0.3
+    assert s2["bg_color"] == DEFAULT_EDIT_SETTINGS["bg_color"]  # 나머지는 기본값
+
+
+def test_hex_to_ff_color():
+    assert _hex_to_ff("#101820") == "0x101820"
+    assert _hex_to_ff("101820") == "0x101820"
+    assert _hex_to_ff("bad") == "0x202430"      # 잘못된 값 → 기본색
+    assert _hex_to_ff("") == "0x202430"
 
 
 # ---------------- 자막 ----------------

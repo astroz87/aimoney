@@ -19,7 +19,64 @@ async function load() {
   if (STATE.selected == null && STATE.scenes.length) STATE.selected = STATE.scenes[0].scene_no;
   renderSlides();
   renderPanel();
+  loadAudioPanel();
 }
+
+// ---- 오디오/배경 (프로젝트) ----
+async function loadAudioPanel() {
+  let s;
+  try { s = await api("GET", `/api/projects/${PID}/edit-settings`); }
+  catch { return; }
+  STATE.audio = s;
+  const box = document.getElementById("audio-panel");
+  box.innerHTML = `
+    <div class="grid2">
+      <label>배경색<input id="a-bg" type="color" value="${s.bg_color || '#202430'}"></label>
+      <label>전환<select id="a-trans">
+        <option value="none" ${s.transition === 'none' ? 'selected' : ''}>없음</option>
+        <option value="fade" ${s.transition === 'fade' ? 'selected' : ''}>페이드</option>
+      </select></label>
+      <label>전환 길이(초)<input id="a-transdur" type="number" step="0.1" min="0" max="2" value="${s.transition_duration}"></label>
+      <label>BGM 볼륨<input id="a-bgmvol" type="range" min="0" max="1" step="0.02" value="${s.bgm_volume}"></label>
+    </div>
+    <label style="margin-top:8px"><input type="checkbox" id="a-bgmon" ${s.bgm_enabled ? 'checked' : ''}> BGM 사용</label>
+    <div class="panel-ops">
+      <button class="btn primary" onclick="saveAudio()">배경/전환 저장</button>
+      <label class="btn" style="cursor:pointer">BGM 업로드<input type="file" accept="audio/*" hidden onchange="uploadBgm(this.files[0])"></label>
+      ${s.bgm_present ? '<button class="btn" onclick="delBgm()">BGM 제거</button>' : ''}
+      <span id="audio-msg" class="hint">${s.bgm_present ? 'BGM 있음 ✓' : 'BGM 없음'}</span>
+    </div>`;
+}
+
+async function saveAudio() {
+  const body = {
+    bg_color: document.getElementById("a-bg").value,
+    transition: document.getElementById("a-trans").value,
+    transition_duration: parseFloat(document.getElementById("a-transdur").value),
+    bgm_volume: parseFloat(document.getElementById("a-bgmvol").value),
+    bgm_enabled: document.getElementById("a-bgmon").checked,
+  };
+  try { await api("PUT", `/api/projects/${PID}/edit-settings`, body); audMsg("저장됨 ✓"); }
+  catch (e) { audMsg("실패: " + e.message); }
+}
+
+async function uploadBgm(file) {
+  if (!file) return;
+  audMsg("BGM 업로드 중...");
+  const fd = new FormData(); fd.append("file", file);
+  try {
+    const res = await fetch(`/api/projects/${PID}/audio/bgm`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    audMsg("BGM 업로드 완료 ✓"); loadAudioPanel();
+  } catch (e) { audMsg("실패: " + e.message); }
+}
+
+async function delBgm() {
+  try { await api("DELETE", `/api/projects/${PID}/audio/bgm`); loadAudioPanel(); }
+  catch (e) { audMsg("실패: " + e.message); }
+}
+
+const audMsg = (m) => { const e = document.getElementById("audio-msg"); if (e) e.textContent = m; };
 
 function sceneThumb(s) {
   // preferred_clip_id 있으면 그 클립, 없으면 hook 1위 클립
@@ -76,7 +133,9 @@ function renderPanel() {
     <div class="panel-ops">
       <button class="btn primary" onclick="saveScene()">저장</button>
       <button class="btn" onclick="sceneTTS()">🎙 이 씬 TTS</button>
-      <span id="scene-msg" class="hint"></span>
+      <label class="btn" style="cursor:pointer">🔊 효과음<input type="file" accept="audio/*" hidden onchange="uploadSfx(this.files[0])"></label>
+      ${s.sfx_path ? '<button class="btn" onclick="delSfx()">효과음 제거</button>' : ''}
+      <span id="scene-msg" class="hint">${s.sfx_path ? '효과음 있음 ✓' : ''}</span>
     </div>`;
 }
 
@@ -96,6 +155,22 @@ async function sceneTTS() {
   msg("TTS 생성 중...");
   try { const r = await api("POST", `/api/projects/${PID}/scenes/${STATE.selected}/tts`, {}); msg(`TTS 완료 (${r.duration}s)`); }
   catch (e) { msg("TTS 실패: " + e.message); }
+}
+
+async function uploadSfx(file) {
+  if (!file) return;
+  msg("효과음 업로드 중...");
+  const fd = new FormData(); fd.append("file", file);
+  try {
+    const res = await fetch(`/api/projects/${PID}/scenes/${STATE.selected}/sfx`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    msg("효과음 업로드 완료 ✓"); await load();
+  } catch (e) { msg("실패: " + e.message); }
+}
+
+async function delSfx() {
+  try { await api("DELETE", `/api/projects/${PID}/scenes/${STATE.selected}/sfx`); msg("효과음 제거됨"); await load(); }
+  catch (e) { msg("실패: " + e.message); }
 }
 
 async function addScene() {

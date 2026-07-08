@@ -46,6 +46,26 @@ CATEGORY_AFFILIATE_MAP: dict[str, list[str]] = {
 # 어필리에이트 프로바이더 기본값 (카테고리 미매칭 시)
 DEFAULT_AFFILIATE_PROVIDERS = ["coupang", "naver_shopping_connect"]
 
+# 오디오/배경 편집 설정 기본값
+DEFAULT_EDIT_SETTINGS = {
+    "bg_color": "#202430",        # 컷이 없는 씬의 배경색
+    "bgm_path": "",               # BGM 파일 경로 (비면 없음)
+    "bgm_enabled": True,          # BGM 사용 여부
+    "bgm_volume": 0.18,           # BGM 볼륨 (0~1)
+    "transition": "none",         # none | fade
+    "transition_duration": 0.3,   # 전환 길이(초)
+}
+
+
+def resolve_edit_settings(raw: dict | None) -> dict:
+    """저장된 편집 설정에 기본값을 채워 반환한다."""
+    merged = dict(DEFAULT_EDIT_SETTINGS)
+    if raw:
+        for k, v in raw.items():
+            if k in merged and v is not None:
+                merged[k] = v
+    return merged
+
 
 def now_iso() -> str:
     """UTC ISO8601 타임스탬프."""

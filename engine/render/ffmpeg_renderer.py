@@ -25,44 +25,73 @@ class RenderError(RuntimeError):
     pass
 
 
-def _scene_clip(spec: dict, out: Path) -> Path:
-    """단일 scene 정규화 클립 생성."""
+def _hex_to_ff(color: str) -> str:
+    """'#RRGGBB' → ffmpeg color 'RRGGBB'. 잘못된 값은 기본색."""
+    c = (color or "").lstrip("#")
+    if len(c) in (6, 8) and all(ch in "0123456789abcdefABCDEF" for ch in c):
+        return f"0x{c}"
+    return "0x202430"
+
+
+def _scene_clip(spec: dict, out: Path, *, bg_color: str = "#202430",
+                transition: str = "none", transition_duration: float = 0.3) -> Path:
+    """단일 scene 정규화 클립 생성 (배경색/전환/효과음 지원)."""
     video_path = spec.get("video_path")
     v_start = float(spec.get("v_start", 0.0))
     v_end = float(spec.get("v_end", 0.0))
     audio_path = spec.get("audio_path")
+    sfx_path = spec.get("sfx_path")
     dur = float(spec.get("duration", 3.0)) or 3.0
     seg = max(0.1, v_end - v_start)
     pad = max(0.0, dur - seg) + 0.5
 
+    inputs: list[str] = []
+    if video_path and Path(video_path).exists():
+        inputs += ["-ss", f"{v_start:.3f}", "-t", f"{seg:.3f}", "-i", str(video_path)]
+    else:
+        inputs += ["-f", "lavfi", "-t", f"{dur:.3f}",
+                   "-i", f"color=c={_hex_to_ff(bg_color)}:s={W}x{H}:r={FPS}"]
+    idx = 1
+
+    has_audio = bool(audio_path) and Path(audio_path).exists() and Path(audio_path).stat().st_size > 0
+    if has_audio:
+        inputs += ["-i", str(audio_path)]
+    else:
+        inputs += ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
+    tts_idx = idx
+    idx += 1
+
+    has_sfx = bool(sfx_path) and Path(sfx_path or "").exists() and Path(sfx_path).stat().st_size > 0
+    if has_sfx:
+        inputs += ["-i", str(sfx_path)]
+        sfx_idx = idx
+        idx += 1
+
+    # 비디오 필터: 정규화 + (옵션) 페이드 전환
     vf = (
         f"scale={W}:{H}:force_original_aspect_ratio=increase,"
         f"crop={W}:{H},setsar=1,fps={FPS},"
         f"tpad=stop_mode=clone:stop_duration={pad:.2f}"
     )
+    if transition == "fade" and transition_duration > 0:
+        d = min(transition_duration, dur / 2)
+        st = max(0.0, dur - d)
+        vf += f",fade=t=in:st=0:d={d:.2f},fade=t=out:st={st:.2f}:d={d:.2f}"
 
-    args: list[str] = []
-    if video_path and Path(video_path).exists():
-        args += ["-ss", f"{v_start:.3f}", "-t", f"{seg:.3f}", "-i", str(video_path)]
-        v_label = "0:v"
+    fc = f"[0:v]{vf}[v]"
+    if has_sfx:
+        fc += (
+            f";[{tts_idx}:a]aresample=44100[tts]"
+            f";[{sfx_idx}:a]volume=0.6,aresample=44100[sfx]"
+            f";[tts][sfx]amix=inputs=2:duration=first:normalize=0[a]"
+        )
+        a_map = "[a]"
     else:
-        # 소스 없음 → 단색 배경
-        args += ["-f", "lavfi", "-t", f"{dur:.3f}",
-                 "-i", f"color=c=0x202430:s={W}x{H}:r={FPS}"]
-        v_label = "0:v"
+        a_map = f"{tts_idx}:a"
 
-    has_audio = bool(audio_path) and Path(audio_path).exists() and Path(audio_path).stat().st_size > 0
-    if has_audio:
-        args += ["-i", str(audio_path)]
-        a_map = "1:a"
-    else:
-        args += ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
-        a_map = f"{1 if video_path and Path(video_path).exists() else 1}:a"
-
-    filt = f"[{v_label}]{vf}[v]"
     cmd = [
-        *args,
-        "-filter_complex", filt,
+        *inputs,
+        "-filter_complex", fc,
         "-map", "[v]", "-map", a_map,
         "-t", f"{dur:.3f}",
         "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
@@ -78,12 +107,22 @@ def _scene_clip(spec: dict, out: Path) -> Path:
 
 def render_video(scene_specs: list[dict], subtitle_path: str | None,
                  out_path: str, work_dir: str, *, bgm_path: str | None = None,
-                 progress_cb=None) -> dict:
-    """전체 렌더링을 수행하고 {'video_path','duration'} 반환."""
+                 opts: dict | None = None, progress_cb=None) -> dict:
+    """전체 렌더링을 수행하고 {'video_path','duration'} 반환.
+
+    opts: bg_color, transition, transition_duration, bgm_volume, bgm_enabled
+    """
     if not has_ffmpeg():
         raise RenderError("ffmpeg 가 설치되어 있지 않습니다")
     if not scene_specs:
         raise RenderError("렌더할 scene 이 없습니다")
+
+    opts = opts or {}
+    bg_color = opts.get("bg_color", "#202430")
+    transition = opts.get("transition", "none")
+    transition_duration = float(opts.get("transition_duration", 0.3) or 0.3)
+    bgm_volume = float(opts.get("bgm_volume", 0.18) or 0.18)
+    bgm_enabled = opts.get("bgm_enabled", True)
 
     work = Path(work_dir)
     work.mkdir(parents=True, exist_ok=True)
@@ -94,7 +133,9 @@ def render_video(scene_specs: list[dict], subtitle_path: str | None,
     clip_paths: list[Path] = []
     n = len(scene_specs)
     for i, spec in enumerate(scene_specs):
-        cp = _scene_clip(spec, work / f"scene_{i+1:03d}.mp4")
+        cp = _scene_clip(spec, work / f"scene_{i+1:03d}.mp4",
+                         bg_color=bg_color, transition=transition,
+                         transition_duration=transition_duration)
         clip_paths.append(cp)
         if progress_cb:
             progress_cb(int((i + 1) / n * 60))
@@ -129,26 +170,24 @@ def render_video(scene_specs: list[dict], subtitle_path: str | None,
         esc = str(Path(subtitle_path).resolve()).replace("\\", "/").replace(":", "\\:")
         filters.append(f"ass='{esc}'")
 
+    use_bgm = bool(bgm_enabled) and bool(bgm_path) and Path(bgm_path or "").exists()
+
     final_args = ["-i", str(src)]
-    if bgm_path and Path(bgm_path).exists():
+    if use_bgm:
         final_args += ["-stream_loop", "-1", "-i", str(bgm_path)]
 
-    if filters:
-        vf = ",".join(filters)
-        final_args += ["-vf", vf]
-    if bgm_path and Path(bgm_path).exists():
-        # 원본 오디오 + BGM(-18dB) 믹스
-        final_args += [
-            "-filter_complex", "[1:a]volume=0.18[bg];[0:a][bg]amix=inputs=2:duration=first[a]",
-            "-map", "0:v", "-map", "[a]",
-        ]
-        # -vf 와 filter_complex 동시 사용 불가 → 자막은 filter_complex 로 이동
+    if not use_bgm:
         if filters:
-            final_args = ["-i", str(src), "-stream_loop", "-1", "-i", str(bgm_path),
-                          "-filter_complex",
-                          f"[0:v]{','.join(filters)}[v];"
-                          "[1:a]volume=0.18[bg];[0:a][bg]amix=inputs=2:duration=first[a]",
-                          "-map", "[v]", "-map", "[a]"]
+            final_args += ["-vf", ",".join(filters)]
+    else:
+        # 원본 오디오 + BGM 믹스 (자막은 filter_complex 로 함께 처리)
+        vchain = f"[0:v]{','.join(filters)}[v]" if filters else "[0:v]copy[v]"
+        final_args += [
+            "-filter_complex",
+            f"{vchain};[1:a]volume={bgm_volume:.2f}[bg];"
+            "[0:a][bg]amix=inputs=2:duration=first:normalize=0[a]",
+            "-map", "[v]", "-map", "[a]",
+        ]
     final_args += [
         "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-movflags", "+faststart", str(out),
