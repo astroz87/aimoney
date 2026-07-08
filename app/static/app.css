@@ -80,3 +80,11 @@ input,select{width:100%;margin-top:4px;padding:8px 10px;background:#0e1116;borde
 /* ---- 스토리라인 바 ---- */
 #storyline-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #storyline-bar .arrow{color:var(--muted)}
+
+/* ---- 컷 미리보기 / 슬라이드 드래그 정렬 ---- */
+.clip-preview{margin-top:8px}
+.clip-preview video{width:100%;max-height:240px;background:#000;border-radius:8px}
+.clip-range{display:flex;gap:8px;align-items:end;margin-top:6px}
+.clip-range label{flex:1}
+.slide-card.dragging{opacity:0.5}
+.slide-card.drag-over{outline:2px dashed var(--accent)}

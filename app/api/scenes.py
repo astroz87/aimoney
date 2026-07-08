@@ -5,7 +5,10 @@ POST   /api/projects/{id}/scenes                   씬 추가
 DELETE /api/projects/{id}/scenes/{scene_no}        씬 삭제
 POST   /api/projects/{id}/scenes/reorder           재정렬
 POST   /api/projects/{id}/scenes/{scene_no}/tts    단일 씬 TTS
+GET    /api/projects/{id}/scenes/{scene_no}/tts.mp3 씬 TTS 오디오 미리듣기
 GET    /api/projects/{id}/clips/{clip_id}/thumb.jpg 클립 썸네일
+GET    /api/projects/{id}/clips/{clip_id}/video     클립 원본 영상 미리보기
+PATCH  /api/projects/{id}/clips/{clip_id}          클립 컷 구간(트림) 수정
 """
 
 from __future__ import annotations
@@ -18,9 +21,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from config import settings
+from engine.media_utils import probe_duration
 from engine.thumbnail import make_clip_thumb
 from app.db.database import get_session
-from app.db.models_orm import Clip, Project, SourceAsset
+from app.db.models_orm import Clip, Project, Scene, SourceAsset, TTSResult
 from app.services import scene_service
 from app.services.tts_service import synthesize_scene
 
@@ -49,6 +53,23 @@ class ReorderRequest(BaseModel):
 
 class SceneTTSRequest(BaseModel):
     provider: str | None = None
+
+
+class ClipTrim(BaseModel):
+    start: float | None = None
+    end: float | None = None
+
+
+def _clamp_clip_range(start: float, end: float, src_dur: float = 0.0) -> tuple[float, float]:
+    """컷 구간을 유효 범위로 보정한다. src_dur>0 이면 원본 길이 내로 클램프."""
+    start = max(0.0, float(start))
+    end = float(end)
+    if src_dur > 0:
+        end = min(end, src_dur)
+        start = min(start, max(0.0, src_dur - 0.2))
+    if end < start + 0.2:
+        end = start + 0.2
+    return round(start, 3), round(end, 3)
 
 
 def _require(db: Session, product_id: str) -> Project:
@@ -134,3 +155,74 @@ def clip_thumb(product_id: str, clip_id: str, db: Session = Depends(get_session)
     if not thumb_path.exists() or thumb_path.stat().st_size == 0:
         raise HTTPException(status_code=404, detail="썸네일 생성 실패")
     return FileResponse(str(thumb_path), media_type="image/jpeg")
+
+
+@router.get("/scenes/{scene_no}/tts.mp3")
+def scene_tts_audio(product_id: str, scene_no: int, db: Session = Depends(get_session)):
+    """씬 TTS 오디오 미리듣기용 서빙."""
+    _require(db, product_id)
+    scene = db.query(Scene).filter(
+        Scene.project_id == product_id, Scene.scene_no == scene_no
+    ).first()
+    if scene is None:
+        raise HTTPException(status_code=404, detail="씬을 찾을 수 없습니다")
+
+    result = db.query(TTSResult).filter(TTSResult.scene_id == scene.id).first()
+    if result is None or not result.audio_path or not Path(result.audio_path).exists():
+        raise HTTPException(status_code=404, detail="TTS 가 없습니다. 먼저 생성하세요.")
+    return FileResponse(result.audio_path, media_type="audio/mpeg")
+
+
+@router.get("/clips/{clip_id}/video")
+def clip_video(product_id: str, clip_id: str, db: Session = Depends(get_session)):
+    """클립 원본 영상 서빙 (씬 미리보기용)."""
+    _require(db, product_id)
+    clip = db.query(Clip).filter(
+        Clip.project_id == product_id, Clip.clip_id == clip_id
+    ).first()
+    if clip is None:
+        raise HTTPException(status_code=404, detail="클립을 찾을 수 없습니다")
+
+    asset = db.get(SourceAsset, clip.source_asset_id) if clip.source_asset_id else None
+    if asset is None or not asset.local_path or not Path(asset.local_path).exists():
+        raise HTTPException(status_code=404, detail="원본 영상이 없습니다")
+    return FileResponse(asset.local_path, media_type="video/mp4")
+
+
+@router.patch("/clips/{clip_id}")
+def trim_clip(product_id: str, clip_id: str, payload: ClipTrim,
+              db: Session = Depends(get_session)):
+    """클립 구간(컷 트림) 수정. 트림 후 타임라인/렌더는 재렌더 시 재계산된다."""
+    _require(db, product_id)
+    clip = db.query(Clip).filter(
+        Clip.project_id == product_id, Clip.clip_id == clip_id
+    ).first()
+    if clip is None:
+        raise HTTPException(status_code=404, detail="클립을 찾을 수 없습니다")
+
+    new_start = clip.start if payload.start is None else payload.start
+    new_end = clip.end if payload.end is None else payload.end
+
+    src_dur = 0.0
+    if clip.source_asset_id:
+        asset = db.get(SourceAsset, clip.source_asset_id)
+        if asset and asset.local_path and Path(asset.local_path).exists():
+            src_dur = probe_duration(asset.local_path)
+
+    new_start, new_end = _clamp_clip_range(new_start, new_end, src_dur)
+
+    clip.start = new_start
+    clip.end = new_end
+    clip.duration = new_end - new_start
+    db.commit()
+
+    # 구간이 바뀌었으니 캐시된 썸네일을 지워 새 시작점으로 재생성되게 한다
+    thumb_path = settings.project_dir(product_id) / "clips" / f"{clip_id}.jpg"
+    thumb_path.unlink(missing_ok=True)
+
+    return {
+        "clip_id": clip_id,
+        "start": clip.start,
+        "end": clip.end,
+        "duration": clip.duration,
+    }

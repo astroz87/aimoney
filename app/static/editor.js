@@ -260,6 +260,7 @@ function renderSlides() {
   STATE.scenes.forEach((s, i) => {
     const div = document.createElement("div");
     div.className = "slide-card" + (s.scene_no === STATE.selected ? " active" : "");
+    div.draggable = true;
     const thumb = sceneThumb(s);
     div.innerHTML = `
       <div class="slide-thumb">${thumb ? `<img src="${thumb}" loading="lazy">` : ""}<span class="slide-dur">${(s.target_duration || 0).toFixed(1)}s</span></div>
@@ -273,6 +274,33 @@ function renderSlides() {
         <button title="삭제" onclick="delScene(${s.scene_no});event.stopPropagation()">✕</button>
       </div>`;
     div.onclick = () => { STATE.selected = s.scene_no; renderSlides(); renderPanel(); };
+    // ---- 드래그로 순서 바꾸기 ----
+    div.addEventListener("dragstart", (ev) => {
+      ev.dataTransfer.setData("text/plain", String(s.scene_no));
+      div.classList.add("dragging");
+    });
+    div.addEventListener("dragend", () => div.classList.remove("dragging"));
+    div.addEventListener("dragover", (ev) => {
+      ev.preventDefault();
+      div.classList.add("drag-over");
+    });
+    div.addEventListener("dragleave", () => div.classList.remove("drag-over"));
+    div.addEventListener("drop", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation(); // 카드 클릭(onclick 씬 선택)으로 전파되지 않도록
+      div.classList.remove("drag-over");
+      const fromNo = parseInt(ev.dataTransfer.getData("text/plain"), 10);
+      const toNo = s.scene_no;
+      if (!fromNo || fromNo === toNo) return;
+      const order = STATE.scenes.map(x => x.scene_no);
+      const fromIdx = order.indexOf(fromNo);
+      const toIdx = order.indexOf(toNo);
+      if (fromIdx < 0 || toIdx < 0) return;
+      order.splice(fromIdx, 1);
+      order.splice(toIdx, 0, fromNo);
+      try { await api("POST", `/api/projects/${PID}/scenes/reorder`, { order }); await load(); }
+      catch (e) { alert(e.message); }
+    });
     box.appendChild(div);
   });
 }
@@ -288,6 +316,17 @@ function renderPanel() {
     `<option value="${c.clip_id}" ${s.preferred_clip_id === c.clip_id ? "selected" : ""}>`
     + `${c.clip_id} · hook ${c.hook_score.toFixed(2)} · ${(c.tags || []).join(",") || "no-tag"}</option>`
   ).join("");
+  // 지정된 컷이 있으면 미리보기(구간 반복 재생)를 함께 보여준다
+  const c = s.preferred_clip_id ? STATE.clips.find(x => x.clip_id === s.preferred_clip_id) : null;
+  const clipPreviewHtml = c ? `
+    <div class="clip-preview" id="clip-preview">
+      <video id="clip-prev" muted playsinline preload="metadata"></video>
+      <div class="clip-range">
+        <label>시작(초)<input id="cp-start" type="number" step="0.1" min="0" value="${c.start}"></label>
+        <label>끝(초)<input id="cp-end" type="number" step="0.1" min="0.2" value="${c.end}"></label>
+        <button class="btn" onclick="saveClipRange('${c.clip_id}')">구간 저장</button>
+      </div>
+    </div>` : "";
   panel.innerHTML = `
     <h3>씬 #${s.scene_no} 편집</h3>
     <div class="grid2">
@@ -300,13 +339,36 @@ function renderPanel() {
     <label>💬 자막(caption_text)<textarea id="f-caption" rows="2">${esc(s.caption_text)}</textarea></label>
     <label>연출 메모(visual_need)<input id="f-need" value="${esc(s.visual_need)}"></label>
     <label>컷 지정<select id="f-clip"><option value="">자동 매칭</option>${clipOpts}</select></label>
+    ${clipPreviewHtml}
     <div class="panel-ops">
       <button class="btn primary" onclick="saveScene()">저장</button>
       <button class="btn" onclick="sceneTTS()">🎙 이 씬 TTS</button>
+      <button class="btn" onclick="playTTS()">▶ 미리듣기</button>
       <label class="btn" style="cursor:pointer">🔊 효과음<input type="file" accept="audio/*" hidden onchange="uploadSfx(this.files[0])"></label>
       ${s.sfx_path ? '<button class="btn" onclick="delSfx()">효과음 제거</button>' : ''}
       <span id="scene-msg" class="hint">${s.sfx_path ? '효과음 있음 ✓' : ''}</span>
     </div>`;
+  // 컷 미리보기: 지정 구간만 반복 재생 (루프 경계는 클로저 변수로 관리)
+  if (c) {
+    const v = document.getElementById("clip-prev");
+    const loopStart = c.start, loopEnd = c.end;
+    v.src = `/api/projects/${PID}/clips/${c.clip_id}/video`;
+    v.onloadedmetadata = () => { v.currentTime = loopStart; v.play(); };
+    v.ontimeupdate = () => { if (v.currentTime >= loopEnd) v.currentTime = loopStart; };
+    v.onerror = () => {
+      const box = document.getElementById("clip-preview");
+      if (box) box.style.display = "none";
+    };
+  }
+}
+
+async function saveClipRange(clipId) {
+  const body = { start: parseFloat(val("cp-start")), end: parseFloat(val("cp-end")) };
+  try {
+    const r = await api("PATCH", `/api/projects/${PID}/clips/${clipId}`, body);
+    msg(`컷 구간 저장됨 ✓ (${r.start}s ~ ${r.end}s)`);
+    await load();
+  } catch (e) { msg("실패: " + e.message); }
 }
 
 async function saveScene() {
@@ -323,8 +385,21 @@ async function saveScene() {
 
 async function sceneTTS() {
   msg("TTS 생성 중...");
-  try { const r = await api("POST", `/api/projects/${PID}/scenes/${STATE.selected}/tts`, {}); msg(`TTS 완료 (${r.duration}s)`); }
+  try { const r = await api("POST", `/api/projects/${PID}/scenes/${STATE.selected}/tts`, {}); msg(`TTS 완료 (${r.duration}s) — ▶ 미리듣기 가능`); }
   catch (e) { msg("TTS 실패: " + e.message); }
+}
+
+// ---- TTS 미리듣기 ----
+let TTS_AUDIO = null;
+async function playTTS() {
+  if (TTS_AUDIO) { TTS_AUDIO.pause(); TTS_AUDIO = null; }
+  const url = `/api/projects/${PID}/scenes/${STATE.selected}/tts.mp3?t=${Date.now()}`;
+  const head = await fetch(url, { method: "GET" });
+  if (!head.ok) { msg("TTS 없음 — 먼저 '이 씬 TTS' 를 실행하세요"); return; }
+  TTS_AUDIO = new Audio(url);
+  TTS_AUDIO.play();
+  msg("▶ 재생 중...");
+  TTS_AUDIO.onended = () => msg("재생 완료");
 }
 
 // ---- 스토리라인 워크플로우 ----

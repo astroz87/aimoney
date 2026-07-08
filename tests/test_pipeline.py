@@ -402,3 +402,13 @@ def test_scene_out_exposes_order_index():
     from app.schemas import SceneOut
 
     assert "order_index" in SceneOut.model_fields
+
+
+# ---------------- 클립 컷 구간 클램프 (씬 편집기) ----------------
+def test_clamp_clip_range():
+    from app.api.scenes import _clamp_clip_range
+
+    assert _clamp_clip_range(-1.0, 5.0) == (0.0, 5.0)          # 음수 start 보정
+    assert _clamp_clip_range(3.0, 3.05) == (3.0, 3.2)          # 최소 길이 0.2s
+    assert _clamp_clip_range(2.0, 99.0, src_dur=10.0) == (2.0, 10.0)  # 원본 길이 클램프
+    assert _clamp_clip_range(9.95, 99.0, src_dur=10.0) == (9.8, 10.0) # start 도 클램프
