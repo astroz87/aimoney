@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}설정{% endblock %}
+{% block content %}
+<h1>⚙️ 설정</h1>
+<p class="hint">API 키는 저장 시 마스킹되어 표시됩니다. 마스킹된 값을 그대로 저장하면 기존 키가 유지됩니다. 우선순위: DB &gt; .env &gt; 기본값.</p>
+
+<form id="settings-form" onsubmit="return saveSettings(event)">
+  <section class="card">
+    <h3>기본 프로바이더</h3>
+    <div class="grid2">
+      <label>기본 LLM
+        <select name="default_llm_provider">
+          {% for v in ['mock','claude','gemini','openai'] %}
+          <option {{ 'selected' if settings.default_llm_provider == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>기본 TTS
+        <select name="default_tts_provider">
+          {% for v in ['mock','edge','gemini','typecast'] %}
+          <option {{ 'selected' if settings.default_tts_provider == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>대본 생성 LLM (오버라이드)
+        <select name="llm_provider_script">
+          <option value="">기본값 사용</option>
+          {% for v in ['mock','claude','gemini','openai'] %}
+          <option {{ 'selected' if settings.llm_provider_script == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>검색어 생성 LLM (오버라이드)
+        <select name="llm_provider_search">
+          <option value="">기본값 사용</option>
+          {% for v in ['mock','claude','gemini','openai'] %}
+          <option {{ 'selected' if settings.llm_provider_search == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Claude (Anthropic) <button type="button" class="btn tiny" onclick="testProvider('claude')">연결 테스트</button></h3>
+    <div class="grid2">
+      <label>API Key<input name="anthropic_api_key" value="{{ settings.anthropic_api_key }}" placeholder="sk-ant-..."></label>
+      <label>모델
+        <select name="claude_model">
+          {% for m in ['claude-opus-4-8','claude-fable-5','claude-sonnet-5','claude-haiku-4-5'] %}
+          <option {{ 'selected' if settings.claude_model == m else '' }}>{{ m }}</option>{% endfor %}
+        </select>
+        <small class="hint">fable-5: 최고성능·2배가격 / opus-4-8: 권장 기본 / sonnet-5: 저비용</small>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Gemini (Google) <button type="button" class="btn tiny" onclick="testProvider('gemini')">연결 테스트</button></h3>
+    <div class="grid2">
+      <label>API Key<input name="gemini_api_key" value="{{ settings.gemini_api_key }}" placeholder="AIza..."></label>
+      <label>모델
+        <select name="gemini_model">
+          {% for m in ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'] %}
+          <option {{ 'selected' if settings.gemini_model == m else '' }}>{{ m }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>OpenAI (GPT) <button type="button" class="btn tiny" onclick="testProvider('openai')">연결 테스트</button></h3>
+    <div class="grid2">
+      <label>API Key<input name="openai_api_key" value="{{ settings.openai_api_key }}" placeholder="sk-..."></label>
+      <label>모델
+        <select name="openai_model">
+          {% for m in ['gpt-4o','gpt-4o-mini','gpt-4.1'] %}
+          <option {{ 'selected' if settings.openai_model == m else '' }}>{{ m }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Pexels 스톡 영상</h3>
+    <div class="grid2">
+      <label>API Key<input name="pexels_api_key" value="{{ settings.pexels_api_key }}" placeholder="Pexels API 키"></label>
+      <label>기본 스톡 프로바이더
+        <select name="default_stock_provider">
+          {% for v in ['mock','pexels'] %}
+          <option {{ 'selected' if settings.default_stock_provider == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <p class="hint">Pexels 무료 라이선스(상업적 사용 가능). 키는 pexels.com/api 에서 발급.</p>
+  </section>
+
+  <section class="card">
+    <h3>쿠팡 파트너스 · 링크 라우터</h3>
+    <div class="grid2">
+      <label>Access Key<input name="coupang_access_key" value="{{ settings.coupang_access_key }}" placeholder="쿠팡 파트너스 Open API Access Key"></label>
+      <label>Secret Key<input name="coupang_secret_key" value="{{ settings.coupang_secret_key }}" placeholder="Secret Key"></label>
+      <label>파트너 태그<input name="coupang_partner_tag" value="{{ settings.coupang_partner_tag }}" placeholder="AF1234567"></label>
+      <label>링크 라우터 베이스<input name="link_router_base" value="{{ settings.link_router_base }}" placeholder="http://127.0.0.1:8000/go"></label>
+    </div>
+    <p class="hint">딥링크 발급은 프로젝트 상세 → 어필리에이트 링크 카드에서.
+      라우터 베이스를 이 서버(<span class="mono">http://127.0.0.1:8000/go</span>)로 두면 /go 리다이렉트와 클릭 집계가 로컬에서 동작합니다.</p>
+  </section>
+
+  <button class="btn primary" type="submit">저장</button>
+  <span id="save-status" class="hint"></span>
+</form>
+{% endblock %}

@@ -1,106 +1,206 @@
-# Threads × 쿠팡 파트너스 마케팅 자동화 CLI
+# 멀티채널 숏폼 어필리에이트 자동화 시스템
 
-스레드(Threads)의 인기 게시글을 분석하여 미디어(이미지/영상)를 추출하고, **Claude**
-로 타겟 맞춤형 후킹 문구를 생성한 뒤, **쿠팡 파트너스** 링크와 광고 고지 문구와 함께
-새 스레드로 자동 발행하는 전과정 자동화 CLI 프로그램입니다.
+중국 쇼핑 사이트 상품을 수집해 **후킹 컷 분석 → 대본 → TTS → 자막 → 9:16 렌더링 →
+플랫폼별 업로드 패키지**까지 자동 생성하는 로컬 웹 대시보드 기반 시스템입니다.
+
+> **설계 원칙:** 완전 자동 배포는 하지 않습니다. MVP 는 "업로드 패키지 생성 + 수동 검수"
+> 까지이며, 저작권(권리 확인)과 경제적 이해관계 표시(공정위)를 코드 레벨에서 강제합니다.
 
 ```
-scrape → process → generate → convert → post
-  (스크래핑)  (미디어가공)   (문구생성)   (링크변환)  (자동발행)
+수집(확장) → 프로젝트 → 영상분석 → 대본 → TTS → 타임라인 → 렌더링 → 패키지
+  content.js   /import    hook cut   scene   mp3    matcher    ffmpeg    platforms/
 ```
+
+## 구성 요소
+
+| 계층 | 위치 | 역할 |
+| --- | --- | --- |
+| 로컬 웹 대시보드 | `server.py`, `app/` | FastAPI + Jinja2. 프로젝트/파이프라인 제어 |
+| 핵심 엔진 | `engine/` | 분석·대본·TTS·타임라인·자막·렌더·패키지 (웹 비의존) |
+| 플랫폼 규칙 | `platforms/` | 플랫폼별 제목/캡션/해시태그 규칙 (파일 하나로 관리) |
+| 크롬 확장 | `extension/` | 상품 페이지 수집 → 대시보드 전송 (MV3) |
+| 기존 CLI | `src/`, `main.py` | Threads × 쿠팡 단일채널 CLI (보존) |
 
 ## 기술 스택
 
-| 영역 | 사용 기술 |
-| --- | --- |
-| 언어 | Python 3.10+ (`asyncio` 비동기) |
-| 웹 자동화 | [Playwright](https://playwright.dev/python/) |
-| AI 연동 | [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python) (`claude-opus-4-8`) |
-| 미디어 처리 | OpenCV (`opencv-python`), Pillow |
-| 환경 변수 | `python-dotenv` |
-
-## 아키텍처 (클래스 구조)
-
-기능별로 모듈화된 Class 기반 구조입니다.
-
-| 클래스 | 모듈 | 역할 |
-| --- | --- | --- |
-| `ThreadScraper` | `src/scraper.py` | 타겟 스레드 게시글 분석 및 미디어 다운로드 |
-| `MediaProcessor` | `src/media_processor.py` | 영상 프레임 추출 및 썸네일 가공 |
-| `ClaudeGenerator` | `src/claude_generator.py` | Claude 통한 마케팅 문구 생성 |
-| `CoupangConverter` | `src/coupang_converter.py` | 쿠팡 링크 변환 및 광고 고지 삽입 |
-| `ThreadPoster` | `src/thread_poster.py` | 콘텐츠를 내 스레드 계정에 자동 업로드 |
-| `CLIController` | `src/cli_controller.py` | `argparse` 명령어 제어 타워 |
+- **웹**: FastAPI + Uvicorn + Jinja2 (+ 바닐라 JS)
+- **DB**: SQLite (SQLAlchemy) — `data/app.db`
+- **영상 분석**: OpenCV + PySceneDetect (컷 분할, 후킹 점수 휴리스틱)
+- **렌더링**: ffmpeg (9:16, 자막 번인, TTS 합성)
+- **LLM**: Provider 추상화 — Claude / Gemini / GPT / Mock (설정창 선택)
+- **TTS**: Provider 추상화 — Mock / Edge TTS / Gemini·Typecast(스텁)
+- **자막**: ASS 우선, SRT 보조
 
 ## 설치
 
 ```bash
-# 1) 의존성 설치
+# 1) 파이썬 의존성
 pip install -r requirements.txt
 
-# 2) Playwright 브라우저 설치
-playwright install chromium
+# 2) ffmpeg (렌더링 필수)
+#   Ubuntu:  sudo apt-get install -y ffmpeg
+#   macOS:   brew install ffmpeg
 
-# 3) 환경 변수 설정
-cp .env.example .env
-#   .env 파일을 열어 API 키 / 계정 정보 / 쿠팡 파트너스 태그를 입력하세요.
+# 3) (선택) LLM SDK — 해당 프로바이더를 쓸 때만
+pip install anthropic                 # Claude
+pip install google-generativeai       # Gemini
+pip install openai                    # GPT
+
+# 4) 환경 변수
+cp .env.example .env    # 필요 시 편집 (또는 설정창에서 관리)
 ```
 
-## 환경 변수 (`.env`)
-
-| 변수 | 설명 |
-| --- | --- |
-| `ANTHROPIC_API_KEY` | Claude API 키 (**필수**) |
-| `CLAUDE_MODEL` | 사용할 모델 (기본 `claude-opus-4-8`) |
-| `THREADS_USERNAME` / `THREADS_PASSWORD` | 발행할 스레드 계정 |
-| `COUPANG_PARTNER_TAG` | 쿠팡 파트너스 추적 ID |
-| `HEADLESS` | 브라우저 표시 여부 (`true`/`false`) |
-| `WORK_DIR` | 산출물 저장 경로 (기본 `./output`) |
-
-> 🔒 `.env` 는 절대 git 에 커밋하지 마세요. (`.gitignore` 에 포함되어 있습니다.)
-
-## 사용법
-
-### 전 과정 자동 실행
+## 실행
 
 ```bash
-python main.py run \
-  --source "https://www.threads.net/@someone/post/XXXX" \
-  --coupang "https://www.coupang.com/vp/products/123456" \
-  --audience "자취 1인가구" \
-  --hint "미니 가습기" \
-  --dry-run        # 발행 직전까지만 (실제 게시 생략)
+uvicorn server:app --port 8000
+# 대시보드:  http://localhost:8000
+# 설정창:    http://localhost:8000/settings
 ```
 
-### 단계별 실행
+### 크롬 확장 설치
 
-```bash
-# 스크래핑만
-python main.py scrape --source "<스레드_URL>"
+`chrome://extensions` → 개발자 모드 → **압축해제된 확장 프로그램 로드** → `extension/` 폴더.
+자세한 내용은 [`extension/README.md`](extension/README.md).
 
-# 문구 생성만
-python main.py generate --text "원본 게시글 본문" --audience "육아맘"
+## 사용 흐름
 
-# 발행만 (준비된 캡션/미디어)
-python main.py post --caption "캡션 내용" --media ./output/processed/a_thumb.jpg
+1. **수집**: 상품 페이지에서 확장 클릭 → 전송. (또는 대시보드에서 직접 생성)
+2. **권리 확인**: 프로젝트 상세에서 `usage_status` 를 **확인됨** 으로 변경.
+   (⚠️ 확인됨이 아니면 렌더링이 차단됩니다.)
+3. **영상 등록**: 파일 업로드 또는 URL 다운로드. (업로드 = 권리 보유 전제)
+4. **파이프라인**: 검색어 → 분석 → 대본 → TTS → 타임라인 → 렌더링 → 패키지.
+5. **결과**: `output/{product_id}/` 에 아래가 생성됩니다.
+
+```
+output/{product_id}/
+  final.mp4  thumbnail.jpg  subtitle.ass  subtitle.srt
+  script.json  timeline.json  package_summary.json
+  naver_clip/       title.txt  description.txt  hashtags.txt
+  instagram_reels/  caption.txt  hashtags.txt
+  tiktok_lite/      caption.txt  hashtags.txt
+  youtube_shorts/   title.txt  description.txt  pinned_comment.txt  hashtags.txt
+  naver_tv/ · facebook_reels/ · threads/
+  affiliate/links.json
+  tracking/tracking_urls.json
+  {product_id}_package.zip
 ```
 
-전역 옵션 `-v / --verbose` 로 상세 로그를 볼 수 있습니다.
+## 설정창 (LLM / TTS)
+
+`/settings` 에서 Claude·Gemini·GPT 의 **API 키와 모델**을 지정하고 기본 프로바이더를
+선택합니다. 대본·검색어 생성기는 여기서 고른 프로바이더를 주입받아 동작하며,
+**키가 없으면 자동으로 Mock 으로 폴백**해 오프라인에서도 전체 흐름이 검증됩니다.
+API 키는 저장 시 마스킹되어 표시됩니다. 우선순위: **DB 설정 > .env > 기본값**.
+
+## 씬 편집기 & 스토리라인 워크플로우
+
+`/projects/{id}/editor` 에서 브루/캡컷식으로 슬라이드를 편집합니다.
+
+**두 가지 흐름을 지원합니다:**
+
+1. **대본 먼저** (자동): 분석 → 대본 생성 → 타임라인 자동 매칭 → 렌더.
+2. **영상 먼저 (스토리라인)**: 분석 → **① 컷으로 스토리라인 조립** → **② 대본 자동 채우기**
+   → 후킹/대본 편집 → TTS → 렌더. (영상을 먼저 만들고 그 위에 나레이션을 얹는 방식)
+
+편집기 기능:
+- 슬라이드별 **자막 · 나레이션 · 컷 지정 · 길이 · 순서** 편집, 씬별 TTS 재생성
+  (대본을 수정하면 그 텍스트로 TTS 가 생성됩니다)
+- **🔤 자막·제목 스타일**: 크기/색/위치/박스/제목을 편집해 **모든 자막에 일괄 적용**(캡컷식)
+- **🎵 오디오/배경**: BGM 업로드·볼륨, 씬별 효과음, 배경색, 전환(페이드)
+- **🔍 스톡 영상(Pexels)**: 검색 → 삽입(다운로드+분석) → 컷 풀에 추가
+- **🎨 템플릿**: 내장 프리셋 + 커스텀 저장
+
+## 템플릿 (스타일 프리셋)
+
+상품만 바꿔 같은 톤으로 양산하기 위한 스타일 프리셋. 자막 스타일 + 배경/전환/BGM +
+레이아웃(꽉채우기/박스형) + 상단 제목 + 대본 톤을 묶습니다.
+
+- **기본(자막만)** — 영상 꽉 채우고 하단 자막만 (쇼핑 쇼츠 기본)
+- **이슈카드 · 드라마·민트자막 · 건강/정보형** — 박스형 영상 + 상단 제목 + 하단 자막
+- **리뷰형 · 전후비교 · 훅강조** — 자막 스타일 프리셋
+- **커스텀 저장**: 현재 스타일을 이름 붙여 저장(`data/custom_templates.json`)
+
+## 지원 플랫폼
+
+- **필수(1순위)**: 네이버 클립 · 인스타 릴스 · 틱톡 라이트
+- **확장(2순위)**: 유튜브 쇼츠 · 네이버TV · 페이스북 릴스 · 스레드
+
+플랫폼 규칙은 `platforms/{name}.py` 하나로 관리되어 추가/수정이 쉽습니다.
+
+## 키 설정 (실제 AI/스톡 사용)
+
+`/settings` 에서 키를 넣으면 실동작합니다(마스킹 저장, 없으면 Mock 폴백):
+- **LLM 대본**: Claude(권장) / Gemini / GPT — 대본 생성·채우기·검색어가 실제 AI 로.
+- **Pexels 스톡**: Pexels API 키(무료 발급) → 스톡 영상 검색·삽입.
+- **TTS**: Edge TTS(무료, 로컬에서 실음성) / Mock.
+
+## 어필리에이트 · 경제적 이해관계 표시
+
+- 카테고리 → 프로바이더 매핑(쿠팡파트너스 / 네이버 쇼핑커넥트 / 오늘의집 / 무신사).
+- 링크는 본문에 하드코딩하지 않고 `/go/{slug}?src={platform}` 트래킹 URL 로만 노출
+  (`tracking/tracking_urls.json`).
+- **경제적 이해관계 표시 문구**는 모든 플랫폼 본문 첫 줄에 자동 삽입되며,
+  누락 시 패키지 생성이 실패합니다.
+
+### 링크 라우터 · 클릭 집계
+
+- 프로젝트 상세 → **어필리에이트 링크·성과** 카드에서 프로바이더별 실제 구매
+  링크를 등록하면 `/go/{slug}?src={platform}` 이 그 링크로 302 리다이렉트되고
+  클릭이 집계됩니다 (`GET /api/stats/clicks`).
+- 설정의 **링크 라우터 베이스**를 `http://127.0.0.1:8000/go` 로 두면 로컬에서
+  바로 동작하고, 실서버 배포 시 도메인만 바꾸면 됩니다.
+
+### 딥링크 자동 발급
+
+- **쿠팡파트너스**: 설정에 Open API Access/Secret 키 입력 → 카드의
+  "딥링크 발급" 버튼 (공식 API, HMAC 서명).
+- **네이버 쇼핑커넥트**: 공개 API 가 없어 **반자동**입니다.
+  1. 로컬에서 `python naver_login.py` 실행 → 뜨는 브라우저에서 직접 로그인
+     (세션이 `data/naver_auth.json` 에 저장됨. 자동 로그인은 계정 정지
+     리스크가 있어 지원하지 않음)
+  2. 카드의 "쇼핑커넥트 발급 (베타)" 버튼 → 센터에서 상품 검색·발급 자동 시도
+  3. 센터 UI 변경 등으로 실패하면 센터에서 수동 발급 후 붙여넣기 (항상 동작)
+  - 셀렉터는 `engine/ingest/naver_connect.py` 상단 상수로 분리되어 있어
+    센터 개편 시 그 부분만 고치면 됩니다.
+
+## API 요약
+
+| Method | 경로 | 설명 |
+| --- | --- | --- |
+| POST | `/api/import-source` | 확장/수동 수집 → 프로젝트 생성 |
+| GET/POST | `/api/projects` | 목록 / 생성 |
+| GET/PATCH | `/api/projects/{id}` | 상세 / 수정(usage_status 등) |
+| POST | `/api/projects/{id}/search-queries` | 한→중 검색어 |
+| POST | `/api/projects/{id}/assets/upload`·`/register` | 영상 업로드/등록 |
+| POST | `/api/projects/{id}/analyze` | 영상 분석 잡 |
+| POST/PUT | `/api/projects/{id}/script` | 대본 생성/편집 |
+| POST | `/api/projects/{id}/tts` | TTS 잡 |
+| POST | `/api/projects/{id}/timeline` | 타임라인 매칭 |
+| POST | `/api/projects/{id}/render` | 렌더 잡 |
+| POST | `/api/projects/{id}/package` | 패키지 생성 잡 |
+| GET | `/api/projects/{id}/download` | 패키지 ZIP |
+| GET | `/api/jobs/{id}` | 잡 상태 폴링 |
+| GET/PUT/POST | `/api/settings`·`/test` | 프로바이더/키 관리·유효성 |
 
 ## 테스트
-
-순수 로직(쿠팡 링크 변환, 모델 분리 등)에 대한 단위 테스트:
 
 ```bash
 python -m pytest tests/ -v
 ```
 
-## 주의 사항 / 면책
+핵심 파이프라인 로직(타임라인 매칭, ASS 자막, 경제적 이해관계 문구, 어필리에이트
+매핑, 패키지 빌더)은 ffmpeg/네트워크 없이 검증됩니다 — `tests/test_pipeline.py`.
 
-- 스레드/쿠팡의 **이용약관과 로봇 정책**을 준수하여 사용하세요. 무분별한 자동
-  스크래핑·발행은 계정 제재 사유가 될 수 있습니다.
-- 스레드는 공식 게시 API 가 제한적이라 DOM 셀렉터에 의존합니다. UI 변경 시
-  `scraper.py` / `thread_poster.py` 의 셀렉터를 갱신해야 할 수 있습니다.
-- 모든 발행물에는 공정거래위원회 권고에 따른 **광고 고지 문구**가 자동 삽입됩니다.
-- 2단계 인증이 설정된 계정은 최초 1회 `HEADLESS=false` 로 수동 로그인 후 세션
-  (`output/auth_state.json`)을 재사용하는 것을 권장합니다.
+## 범위 밖 (MVP 제외)
+
+완전 자동 업로드 · 실제 구매전환 데이터 연동 · 전 사이트 자동 크롤링 ·
+캡챠/로그인/DRM 우회 · 고급 비전 모델 · SaaS 배포.
+
+## 주의 / 면책
+
+- 중국 사이트 영상은 **권리 확인이 필요**합니다. 시스템은 도구를 제공할 뿐,
+  사용 책임은 사용자에게 있습니다. (`source_url` · `usage_status` 필드로 추적)
+- 틱톡 라이트 등 일부 플랫폼의 외부링크/리워드 정책은 상이하므로, 패키지 생성 후
+  **수동 검수**로 업로드 가능 여부를 확인하세요.
+- 실제 Gemini/Typecast TTS 는 스텁이며, MVP 실동작 TTS 는 Edge TTS(무료)입니다.

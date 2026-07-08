@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "숏폼 어필리에이트 수집기",
+  "version": "0.1.0",
+  "description": "중국 쇼핑 사이트 상품 페이지의 상품명/이미지/영상 후보를 로컬 대시보드로 전송합니다.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "상품 수집"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

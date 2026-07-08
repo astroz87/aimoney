@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}씬 편집기 · {{ project.id if project else '' }}{% endblock %}
+{% block content %}
+{% if not project %}
+  <p class="empty">프로젝트를 찾을 수 없습니다. <a href="/">목록으로</a></p>
+{% else %}
+<a href="/projects/{{ project.id }}" class="back">← 프로젝트</a>
+<section class="head-row">
+  <h1>🎬 씬 편집기 — {{ project.product_ko or project.id }}</h1>
+  <div>
+    <button class="btn" onclick="reRender()">재렌더링</button>
+    <span id="ed-job" class="hint"></span>
+  </div>
+</section>
+
+<div class="card" id="storyline-bar">
+  <b>🎬 워크플로우:</b>
+  <button class="btn" onclick="buildStoryline()">① 컷으로 스토리라인 조립</button>
+  <span class="arrow">→</span>
+  <button class="btn" onclick="fillScript()">② 대본 자동 채우기</button>
+  <span class="arrow">→</span>
+  <span class="hint">③ 아래에서 후킹·대본 편집 → ④ TTS → ⑤ 재렌더</span>
+  <span id="story-msg" class="hint"></span>
+</div>
+
+<div id="editor-root" data-pid="{{ project.id }}" class="editor-grid">
+  <!-- 슬라이드(씬) 리스트 -->
+  <div class="slide-col">
+    <div id="slide-list"></div>
+    <button class="btn slide-add" onclick="addScene()">＋ 씬 추가</button>
+  </div>
+
+  <!-- 편집 패널 -->
+  <div class="edit-col">
+    <!-- 템플릿 (스타일 프리셋) -->
+    <details class="card" id="template-card">
+      <summary><b>🎨 템플릿 (스타일 프리셋)</b></summary>
+      <div class="stock-search">
+        <select id="tpl-select" style="flex:1"></select>
+        <button class="btn primary" onclick="applyTemplate()">적용</button>
+        <button class="btn" id="tpl-del" onclick="deleteTemplate()" style="display:none">삭제</button>
+      </div>
+      <p id="tpl-desc" class="hint"></p>
+      <div class="stock-search">
+        <button class="btn" onclick="saveTemplate()">＋ 현재 스타일을 템플릿으로 저장</button>
+      </div>
+      <span id="tpl-msg" class="hint"></span>
+    </details>
+
+    <!-- 스톡 영상 검색 -->
+    <details class="card" id="stock-card">
+      <summary><b>🔍 스톡 영상 (Pexels)</b></summary>
+      <div class="stock-search">
+        <input id="stock-q" placeholder="검색어 (예: desk cable)" onkeydown="if(event.key==='Enter')stockSearch()">
+        <button class="btn" onclick="stockSearch()">검색</button>
+      </div>
+      <div id="stock-results" class="stock-grid"></div>
+      <span id="stock-msg" class="hint">라이선스 명확한 무료 스톡으로 컷을 보완합니다.</span>
+    </details>
+
+    <!-- 자막·제목 스타일 (모든 자막에 일괄 적용) -->
+    <details class="card" id="text-card">
+      <summary><b>🔤 자막 · 제목 스타일</b></summary>
+      <div id="text-panel"><p class="hint">불러오는 중...</p></div>
+    </details>
+
+    <!-- 오디오 / 배경 (프로젝트 전체) -->
+    <details class="card" id="audio-card">
+      <summary><b>🎵 오디오 / 배경</b></summary>
+      <div id="audio-panel"><p class="hint">불러오는 중...</p></div>
+    </details>
+
+    <div id="edit-panel" class="card">
+      <p class="empty">왼쪽에서 씬을 선택하세요.</p>
+    </div>
+    <div class="card">
+      <h3>미리보기</h3>
+      <video id="preview" class="preview-video" controls preload="none"></video>
+      <p class="hint">재렌더링 후 최신 영상이 반영됩니다. (권리 상태가 '확인됨'이어야 렌더 가능)</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/editor.js"></script>
+{% endblock %}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body{width:300px;margin:0;font:14px/1.5 -apple-system,"Noto Sans KR",sans-serif;padding:14px}
+    h3{margin:0 0 10px}
+    label{display:block;font-size:12px;color:#555;margin-top:8px}
+    input{width:100%;box-sizing:border-box;padding:6px 8px;margin-top:3px;border:1px solid #ccc;border-radius:5px}
+    button{width:100%;margin-top:12px;padding:9px;background:#4f8cff;color:#fff;border:0;border-radius:6px;font-size:14px;cursor:pointer}
+    button:hover{background:#3b78ec}
+    #status{margin-top:10px;font-size:12px;min-height:16px}
+    .ok{color:#2a9d5a}.err{color:#d23}
+  </style>
+</head>
+<body>
+  <h3>🎬 상품 수집</h3>
+  <label>대시보드 주소
+    <input id="server" value="http://localhost:8000" placeholder="http://localhost:8000">
+  </label>
+  <label>카테고리 (선택)
+    <input id="category" placeholder="수납/정리">
+  </label>
+  <button id="send">현재 페이지 수집 → 전송</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
