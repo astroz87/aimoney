@@ -7,6 +7,9 @@ from pathlib import Path
 
 from engine.models import Clip, Scene
 from engine.timeline import build_timeline
+from engine.tts.factory import get_tts_provider
+from engine.tts.mock_provider import MockTTSProvider
+from app.services.project_service import _en_slug
 from engine.subtitle.ass_builder import build_ass, _ts, _wrap_two_lines
 from engine.package.disclosure import DISCLOSURE_TEXT, prepend_disclosure
 from engine.package.affiliate import providers_for_category, build_affiliate_links
@@ -111,6 +114,30 @@ def test_tracking_urls_per_platform():
     urls = build_tracking_urls("https://x.com/go", "케이블 홀더", ["youtube_shorts", "threads"])
     assert urls["youtube_shorts"].endswith("?src=youtube_shorts")
     assert "/go/" in urls["threads"]
+
+
+# ---------------- TTS 팩토리 폴백 (PR 리뷰) ----------------
+def test_tts_stub_providers_fall_back_to_mock():
+    # gemini/typecast 는 미구현 → 생성 시점에 실패하고 Mock 으로 폴백해야 한다
+    assert isinstance(get_tts_provider("gemini", allow_fallback=True), MockTTSProvider)
+    assert isinstance(get_tts_provider("typecast", allow_fallback=True), MockTTSProvider)
+    # 폴백 비활성 시에는 예외 전파
+    import pytest
+    with pytest.raises(Exception):
+        get_tts_provider("gemini", allow_fallback=False)
+
+
+# ---------------- product_id 슬러그 정규화 (PR 리뷰) ----------------
+def test_en_slug_sanitizes_dirty_source_site():
+    # 한글 전용 상품명 → source_site 폴백. '/'·공백·구두점이 있어도 안전해야 한다
+    slug = _en_slug("케이블 정리 홀더", "1688/특가 세일!")
+    assert "/" not in slug and " " not in slug
+    assert all(c.isalnum() or c == "-" for c in slug)
+    assert slug  # 비어있지 않음
+
+
+def test_en_slug_prefers_ascii_product_name():
+    assert _en_slug("Cable Holder", "1688") == "cable-holder"
 
 
 # ---------------- 패키지 빌더 (통합) ----------------

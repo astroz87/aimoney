@@ -21,14 +21,22 @@ def _today() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d")
 
 
+def _ascii_slugify(text: str) -> str:
+    """문자열을 product_id/경로에 안전한 ASCII 슬러그로 정규화한다.
+
+    슬래시·공백·구두점을 제거해 URL 경로/파일시스템 경로 사고를 방지한다.
+    """
+    slug = slugify(text)  # 소문자화 + 비영숫자→하이픈
+    ascii_slug = "".join(ch for ch in slug if ch.isascii() and (ch.isalnum() or ch == "-"))
+    return ascii_slug.strip("-")
+
+
 def _en_slug(product_ko: str, source_site: str) -> str:
     """product_id 용 ASCII 슬러그. 한글만 있으면 source_site 기반 대체."""
-    slug = slugify(product_ko)
-    # 한글만 남은 경우 ASCII 로 치환 불가 → 사이트명+timestamp 조합
-    ascii_slug = "".join(ch for ch in slug if ch.isascii() and (ch.isalnum() or ch == "-"))
-    ascii_slug = ascii_slug.strip("-")
+    ascii_slug = _ascii_slugify(product_ko)
     if not ascii_slug:
-        ascii_slug = (source_site or "item").lower()
+        # 폴백도 반드시 정규화 (source_site 에 '/'·공백·구두점이 있어도 안전)
+        ascii_slug = _ascii_slugify(source_site) or "item"
     return ascii_slug
 
 

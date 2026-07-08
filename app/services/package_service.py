@@ -46,9 +46,18 @@ def run_package(project_id: str, ctx: JobContext) -> None:
             SceneORM.project_id == project_id
         ).order_by(SceneORM.order_index).all()]
         render = db.query(Render).filter(Render.project_id == project_id).first()
+        render_ok = bool(
+            render and render.status == "done"
+            and render.video_path and Path(render.video_path).exists()
+        )
 
     if not scenes:
         raise RuntimeError("대본이 없습니다")
+    # 최종 렌더가 없으면 패키지 생성을 거부한다(빈 final.mp4 로 packaged 표시 방지).
+    if not render_ok:
+        raise RuntimeError(
+            "렌더링된 final.mp4 가 없습니다. 먼저 렌더링을 완료한 뒤 패키지를 생성하세요."
+        )
 
     proj_dir = settings.project_dir(project_id)
     out_dir = settings.output_project_dir(project_id)

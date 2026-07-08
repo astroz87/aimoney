@@ -16,6 +16,11 @@ class GeminiTTSProvider(TTSProvider):
         super().__init__(voice=voice)
         self._api_key = api_key
         self._model = model
+        # 미구현: 생성 시점에 실패시켜 팩토리가 Mock 으로 폴백하도록 한다
+        # (그래야 백그라운드 TTS 잡이 synthesize 단계에서 늦게 죽지 않는다).
+        raise NotImplementedError(
+            "GeminiTTSProvider 는 아직 미구현입니다. 설정에서 edge 또는 mock 을 사용하세요."
+        )
 
     def synthesize(self, text: str, *, emotion: str = "neutral",
                    pace: str = "normal", output_path: str) -> dict:
