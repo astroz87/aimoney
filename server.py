@@ -55,7 +55,7 @@ def _try_include(module_name: str) -> None:
 
 
 for _m in ("settings", "jobs", "assets", "analysis", "script", "tts",
-           "render", "packages", "scenes", "audio"):
+           "render", "packages", "scenes", "audio", "stock"):
     _try_include(_m)
 
 # --- 정적 파일 ---

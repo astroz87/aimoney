@@ -11,6 +11,8 @@ from engine.tts.factory import get_tts_provider
 from engine.tts.mock_provider import MockTTSProvider
 from engine.models import resolve_edit_settings, DEFAULT_EDIT_SETTINGS
 from engine.render.ffmpeg_renderer import _hex_to_ff
+from engine.stock.factory import get_stock_provider
+from engine.stock.mock_provider import MockStockProvider
 from app.services.project_service import _en_slug
 from engine.subtitle.ass_builder import build_ass, _ts, _wrap_two_lines
 from engine.package.disclosure import DISCLOSURE_TEXT, prepend_disclosure
@@ -99,6 +101,19 @@ def test_hex_to_ff_color():
     assert _hex_to_ff("101820") == "0x101820"
     assert _hex_to_ff("bad") == "0x202430"      # 잘못된 값 → 기본색
     assert _hex_to_ff("") == "0x202430"
+
+
+# ---------------- 스톡 프로바이더 ----------------
+def test_stock_pexels_without_key_falls_back_to_mock():
+    prov = get_stock_provider("pexels", api_key="", allow_fallback=True)
+    assert isinstance(prov, MockStockProvider)
+
+
+def test_stock_mock_search_returns_items():
+    prov = get_stock_provider("mock")
+    res = prov.search("cable", per_page=4)
+    assert len(res) == 4
+    assert all(v.video_url == "" for v in res)  # mock 은 실제 URL 없음
 
 
 # ---------------- 자막 ----------------

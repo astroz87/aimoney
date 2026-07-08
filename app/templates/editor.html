@@ -22,6 +22,17 @@
 
   <!-- 편집 패널 -->
   <div class="edit-col">
+    <!-- 스톡 영상 검색 -->
+    <details class="card" id="stock-card">
+      <summary><b>🔍 스톡 영상 (Pexels)</b></summary>
+      <div class="stock-search">
+        <input id="stock-q" placeholder="검색어 (예: desk cable)" onkeydown="if(event.key==='Enter')stockSearch()">
+        <button class="btn" onclick="stockSearch()">검색</button>
+      </div>
+      <div id="stock-results" class="stock-grid"></div>
+      <span id="stock-msg" class="hint">라이선스 명확한 무료 스톡으로 컷을 보완합니다.</span>
+    </details>
+
     <!-- 오디오 / 배경 (프로젝트 전체) -->
     <details class="card" id="audio-card">
       <summary><b>🎵 오디오 / 배경</b></summary>

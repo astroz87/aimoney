@@ -78,6 +78,40 @@ async function delBgm() {
 
 const audMsg = (m) => { const e = document.getElementById("audio-msg"); if (e) e.textContent = m; };
 
+// ---- 스톡 영상 검색/삽입 ----
+async function stockSearch() {
+  const q = document.getElementById("stock-q").value.trim();
+  if (!q) return;
+  stockMsg("검색 중...");
+  try {
+    const r = await api("GET", `/api/stock/search?q=${encodeURIComponent(q)}`);
+    const grid = document.getElementById("stock-results");
+    grid.innerHTML = "";
+    if (!r.results.length) { stockMsg("결과 없음 (설정에서 Pexels 키/프로바이더 확인)"); return; }
+    r.results.forEach(v => {
+      const d = document.createElement("div");
+      d.className = "stock-item";
+      d.innerHTML = `${v.preview_image ? `<img src="${v.preview_image}" loading="lazy">` : '<div class="stock-noimg"></div>'}<span>${v.duration}s</span>`;
+      d.title = `${v.provider} · ${v.author} · ${v.width}x${v.height}`;
+      d.onclick = () => stockImport(v);
+      grid.appendChild(d);
+    });
+    stockMsg(`${r.results.length}개 · 클릭하면 삽입`);
+  } catch (e) { stockMsg("실패: " + e.message); }
+}
+
+async function stockImport(v) {
+  if (!v.video_url) { stockMsg("이 결과는 삽입 불가(mock)"); return; }
+  stockMsg("삽입 중(다운로드+분석)...");
+  try {
+    const r = await api("POST", `/api/projects/${PID}/stock/import`, { video_url: v.video_url, source_id: v.id });
+    stockMsg(`삽입 완료 · 컷 ${r.clips_added}개 추가됨`);
+    await load();  // 클립 목록 갱신 → 컷 지정 드롭다운에 반영
+  } catch (e) { stockMsg("실패: " + e.message); }
+}
+
+const stockMsg = (m) => { const e = document.getElementById("stock-msg"); if (e) e.textContent = m; };
+
 function sceneThumb(s) {
   // preferred_clip_id 있으면 그 클립, 없으면 hook 1위 클립
   const cid = s.preferred_clip_id || (STATE.clips[0] && STATE.clips[0].clip_id);

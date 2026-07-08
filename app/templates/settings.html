@@ -76,6 +76,20 @@
     </div>
   </section>
 
+  <section class="card">
+    <h3>Pexels 스톡 영상</h3>
+    <div class="grid2">
+      <label>API Key<input name="pexels_api_key" value="{{ settings.pexels_api_key }}" placeholder="Pexels API 키"></label>
+      <label>기본 스톡 프로바이더
+        <select name="default_stock_provider">
+          {% for v in ['mock','pexels'] %}
+          <option {{ 'selected' if settings.default_stock_provider == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <p class="hint">Pexels 무료 라이선스(상업적 사용 가능). 키는 pexels.com/api 에서 발급.</p>
+  </section>
+
   <button class="btn primary" type="submit">저장</button>
   <span id="save-status" class="hint"></span>
 </form>

@@ -17,6 +17,9 @@ from app.db.models_orm import Setting
 _KEYS: dict[str, str | None] = {
     "default_llm_provider": "default_llm_provider",
     "default_tts_provider": "default_tts_provider",
+    "default_stock_provider": "default_stock_provider",
+    # Pexels 스톡
+    "pexels_api_key": "pexels_api_key",
     # 작업별 오버라이드 (비면 default 사용)
     "llm_provider_script": None,
     "llm_provider_search": None,
@@ -35,7 +38,7 @@ _KEYS: dict[str, str | None] = {
 }
 
 # 마스킹 대상 키 (부분 노출)
-_SECRET_KEYS = {"anthropic_api_key", "gemini_api_key", "openai_api_key"}
+_SECRET_KEYS = {"anthropic_api_key", "gemini_api_key", "openai_api_key", "pexels_api_key"}
 
 
 def _env_default(key: str) -> str:
@@ -106,3 +109,7 @@ def resolve_llm_provider(task: str | None = None) -> str:
 
 def resolve_tts_provider() -> str:
     return get("default_tts_provider", "mock")
+
+
+def resolve_stock_provider() -> str:
+    return get("default_stock_provider", "mock")

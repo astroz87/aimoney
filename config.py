@@ -46,9 +46,13 @@ class Settings:
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
     openai_model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o"))
 
+    # --- 스톡 영상 (Pexels) ---
+    pexels_api_key: str = field(default_factory=lambda: os.getenv("PEXELS_API_KEY", ""))
+
     # --- 기본 프로바이더 선택 ---
     default_llm_provider: str = field(default_factory=lambda: os.getenv("DEFAULT_LLM_PROVIDER", "mock"))
     default_tts_provider: str = field(default_factory=lambda: os.getenv("DEFAULT_TTS_PROVIDER", "mock"))
+    default_stock_provider: str = field(default_factory=lambda: os.getenv("DEFAULT_STOCK_PROVIDER", "mock"))
 
     # --- Threads 계정 (기존 CLI) ---
     threads_username: str = field(default_factory=lambda: os.getenv("THREADS_USERNAME", ""))
