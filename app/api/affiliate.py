@@ -41,6 +41,10 @@ class CoupangDeeplinkRequest(BaseModel):
     url: str
 
 
+class NaverConnectRequest(BaseModel):
+    query: str  # 센터 상품 검색어(상품명) 또는 스마트스토어 상품 URL
+
+
 def _serialize(db: Session, product: Project) -> dict:
     """카테고리 우선순위 프로바이더 + DB 저장 링크를 병합해 응답을 만든다."""
     slug = slugify(product.product_ko)
@@ -124,3 +128,50 @@ def create_coupang_deeplink(
     row.product_slug = slug
     db.commit()
     return {"provider": "coupang", "raw_url": deeplink}
+
+
+@router.get("/affiliate-links/naver-session")
+def naver_session_status(product_id: str, db: Session = Depends(get_session)):
+    """네이버 로그인 세션(naver_login.py 로 저장) 존재 여부."""
+    _require(db, product_id)
+    from engine.ingest.naver_connect import has_session
+
+    return {"has_session": has_session()}
+
+
+@router.post("/affiliate-links/naver-connect")
+def create_naver_connect_link(
+    product_id: str, payload: NaverConnectRequest, db: Session = Depends(get_session)
+):
+    """쇼핑커넥트 센터에서 링크 발급을 자동 시도한다 (반자동 — 세션 필요).
+
+    실패 시 메시지와 함께 400/502 — 센터에서 수동 발급 후 붙여넣기로 폴백.
+    """
+    product = _require(db, product_id)
+    from engine.ingest.naver_connect import NaverConnectError, create_connect_link, has_session
+
+    if not has_session():
+        raise HTTPException(
+            status_code=400,
+            detail="네이버 로그인 세션이 없습니다. 로컬에서 `python naver_login.py` 를 "
+                   "실행해 로그인한 뒤 다시 시도하세요.",
+        )
+    try:
+        link = create_connect_link(payload.query)
+    except NaverConnectError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 — Playwright 미설치/브라우저 문제 등
+        raise HTTPException(status_code=502, detail=f"쇼핑커넥트 발급 실패: {exc}") from exc
+
+    slug = slugify(product.product_ko)
+    row = db.query(AffiliateLink).filter(
+        AffiliateLink.project_id == product_id,
+        AffiliateLink.provider == "naver_shopping_connect",
+    ).first()
+    if row is None:
+        row = AffiliateLink(project_id=product_id, provider="naver_shopping_connect")
+        db.add(row)
+    row.raw_url = link
+    row.product_slug = slug
+    db.commit()
+    return {"provider": "naver_shopping_connect", "raw_url": link}

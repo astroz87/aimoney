@@ -168,6 +168,7 @@ async function loadAffLinks() {
           <input data-provider="${esc(l.provider)}" value="${esc(l.raw_url)}" placeholder="실제 구매/파트너스 링크 URL">
         </label>
         ${l.provider === "coupang" ? `<button class="btn tiny" onclick="coupangDeeplink()">딥링크 발급</button>` : ""}
+        ${l.provider === "naver_shopping_connect" ? `<button class="btn tiny" onclick="naverConnectLink()">쇼핑커넥트 발급 (베타)</button>` : ""}
         <div class="mono hint">${esc(l.tracking_url)}</div>
       </div>
     `).join("") || `<p class="hint">등록된 프로바이더 없음</p>`;
@@ -201,6 +202,28 @@ async function coupangDeeplink() {
     if (msg) msg.textContent = "딥링크 발급됨 ✓";
   } catch (e) {
     if (msg) msg.textContent = "딥링크 발급 실패: " + e.message;
+  }
+}
+
+async function naverConnectLink() {
+  const msg = document.getElementById("aff-msg");
+  try {
+    const st = await api("GET", `/api/projects/${pid()}/affiliate-links/naver-session`);
+    if (!st.has_session) {
+      if (msg) msg.textContent = "네이버 세션 없음 — 로컬에서 python naver_login.py 실행 후 재시도";
+      return;
+    }
+  } catch (e) { /* 상태 확인 실패해도 발급 시도는 진행 */ }
+  const q = prompt("쇼핑커넥트에서 검색할 상품명(또는 스마트스토어 상품 URL):");
+  if (!q) return;
+  if (msg) msg.textContent = "쇼핑커넥트 발급 시도 중... (브라우저 자동화, 수십 초 걸릴 수 있음)";
+  try {
+    const r = await api("POST", `/api/projects/${pid()}/affiliate-links/naver-connect`, { query: q });
+    const input = document.querySelector('#aff-links input[data-provider="naver_shopping_connect"]');
+    if (input) input.value = r.raw_url;
+    if (msg) msg.textContent = "쇼핑커넥트 링크 발급됨 ✓";
+  } catch (e) {
+    if (msg) msg.textContent = "자동 발급 실패 — 센터에서 수동 발급 후 붙여넣으세요. (" + e.message + ")";
   }
 }
 

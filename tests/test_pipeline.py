@@ -430,3 +430,15 @@ def test_pick_link_respects_priority():
     assert _pick_link(rows, ["coupang", "ohouse"]).provider == "coupang"
     assert _pick_link([R("musinsa", "https://m")], ["coupang"]).provider == "musinsa"  # 우선순위 밖도 폴백
     assert _pick_link([], ["coupang"]) is None
+
+def test_naver_connect_requires_session(tmp_path, monkeypatch):
+    from engine.ingest import naver_connect
+
+    # 세션 파일이 없는 경로로 바꿔치기 → 명확한 에러
+    monkeypatch.setattr(naver_connect, "AUTH_STATE_PATH", tmp_path / "none.json")
+    assert naver_connect.has_session() is False
+    try:
+        naver_connect.create_connect_link("케이블 홀더")
+        assert False, "세션 없이 성공하면 안 됨"
+    except naver_connect.NaverConnectError as exc:
+        assert "naver_login.py" in str(exc)
