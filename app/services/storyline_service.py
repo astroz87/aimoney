@@ -78,6 +78,7 @@ def fill_script(project_id: str, provider: str | None = None) -> list[dict]:
         if project is None:
             raise RuntimeError("프로젝트를 찾을 수 없습니다")
         product_ko, category = project.product_ko, project.category
+        product_zh = project.product_zh
         tone = (project.edit_settings or {}).get("script_tone", "")
 
         scenes = db.query(SceneORM).filter(
@@ -96,12 +97,15 @@ def fill_script(project_id: str, provider: str | None = None) -> list[dict]:
                 "clip_id": s.preferred_clip_id or "",
                 "tags": (clip.tags if clip else []) or [],
                 "description": clip.description if clip else "",
+                # 씬별 나레이션 글자 수 예산 산정용 (초당 5.5자)
+                "duration": s.target_duration or (clip.duration if clip else 0),
             })
 
     resolved = provider or settings_store.resolve_llm_provider("script")
     llm = llm_service.get_provider(task="script", provider=resolved)
     texts = fill_scene_texts(
-        llm, product_ko=product_ko, category=category, tone=tone, clips_info=clips_info
+        llm, product_ko=product_ko, category=category, tone=tone,
+        clips_info=clips_info, product_zh=product_zh,
     )
 
     with session_scope() as db:

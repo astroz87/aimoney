@@ -8,6 +8,8 @@
 <section class="head-row">
   <h1>{{ project.product_ko or project.id }}</h1>
   <span class="badge status">{{ project.status }}</span>
+  <button class="btn small danger" style="margin-left:auto"
+          onclick="deleteProject('{{ project.id }}')">🗑 프로젝트 삭제</button>
 </section>
 
 <div class="card" data-pid="{{ project.id }}" id="project-root">

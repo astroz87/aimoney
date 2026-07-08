@@ -28,7 +28,7 @@
 
 <table class="list">
   <thead>
-    <tr><th>product_id</th><th>상품명</th><th>카테고리</th><th>사이트</th><th>권리</th><th>상태</th></tr>
+    <tr><th>product_id</th><th>상품명</th><th>카테고리</th><th>사이트</th><th>권리</th><th>상태</th><th></th></tr>
   </thead>
   <tbody>
     {% for p in projects %}
@@ -39,9 +39,10 @@
       <td>{{ p.source_site or '—' }}</td>
       <td><span class="badge usage-{{ 'ok' if p.usage_status == '확인됨' else ('no' if p.usage_status == '제외' else 'warn') }}">{{ p.usage_status }}</span></td>
       <td><span class="badge status">{{ p.status }}</span></td>
+      <td><button class="btn small danger" onclick="deleteProject('{{ p.id }}', event)" title="프로젝트 삭제">🗑</button></td>
     </tr>
     {% else %}
-    <tr><td colspan="6" class="empty">아직 프로젝트가 없습니다. 크롬 확장으로 수집하거나 위에서 생성하세요.</td></tr>
+    <tr><td colspan="7" class="empty">아직 프로젝트가 없습니다. 크롬 확장으로 수집하거나 위에서 생성하세요.</td></tr>
     {% endfor %}
   </tbody>
 </table>

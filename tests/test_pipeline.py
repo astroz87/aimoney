@@ -320,3 +320,58 @@ def test_build_packages_full(tmp_path):
     # 어필리에이트 순서(수납/정리 → ohouse 우선)
     aff = json.loads((tmp_path / "affiliate" / "links.json").read_text(encoding="utf-8"))
     assert aff["providers"][0]["provider"] == "ohouse"
+
+
+# ---------------- 렌더러: 슬로모/크로스페이드 (Fable 리뷰 A) ----------------
+def test_slowmo_stretch_within_limit():
+    from engine.render.ffmpeg_renderer import _slowmo
+
+    # 2초 컷을 3초로: 1.5배 슬로모, 패딩 없음
+    slow, pad = _slowmo(2.0, 3.0)
+    assert abs(slow - 1.5) < 1e-6
+    assert pad == 0
+
+def test_slowmo_caps_at_max_and_pads_rest():
+    from engine.render.ffmpeg_renderer import _slowmo
+
+    # 2초 컷을 5초로: 최대 2배 → 4초, 나머지 1초는 tpad
+    slow, pad = _slowmo(2.0, 5.0)
+    assert slow == 2.0
+    assert abs(pad - 1.0) < 1e-6
+
+def test_slowmo_no_stretch_when_long_enough():
+    from engine.render.ffmpeg_renderer import _slowmo
+
+    slow, pad = _slowmo(5.0, 3.0)
+    assert slow == 1.0 and pad == 0
+
+def test_xfade_offsets_preserve_total_duration():
+    from engine.render.ffmpeg_renderer import _xfade_filter
+
+    # 핵심 불변식: xfade offset_i = 앞 씬 길이 누적합 → 총 길이 = Σdur (자막/TTS 싱크 유지)
+    fc, vlabel = _xfade_filter([3.0, 4.0, 2.0], 0.3)
+    assert "offset=3.000" in fc
+    assert "offset=7.000" in fc
+    assert vlabel == "vx2"
+    # 오디오는 씬 길이 그대로 잘라 concat (tail 은 비디오 전용)
+    assert "atrim=0:3.000" in fc and "atrim=0:4.000" in fc and "atrim=0:2.000" in fc
+    assert "concat=n=3:v=0:a=1[aout]" in fc
+
+
+# ---------------- 프롬프트: 발화 길이 연동 (Fable 리뷰 C) ----------------
+def test_script_rules_contain_chars_per_sec():
+    from engine.script.base import CHARS_PER_SEC, SCRIPT_RULES
+
+    assert CHARS_PER_SEC == 5.5
+    assert str(CHARS_PER_SEC) in SCRIPT_RULES
+    assert "target_duration" in SCRIPT_RULES
+
+def test_filler_prompt_includes_char_budget():
+    from engine.script.filler import _build_prompt
+
+    p = _build_prompt("케이블 홀더", "살림템", "", [
+        {"scene_no": 1, "role": "hook", "clip_id": "clip_001",
+         "tags": [], "description": "", "duration": 3.0},
+    ], product_zh="桌面理线器")
+    assert "약 16자" in p         # 3.0초 × 5.5자 ≈ 16자
+    assert "桌面理线器" in p       # C3: 중국어 원문 컨텍스트

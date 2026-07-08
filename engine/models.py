@@ -52,7 +52,8 @@ DEFAULT_EDIT_SETTINGS = {
     "bgm_path": "",               # BGM 파일 경로 (비면 없음)
     "bgm_enabled": True,          # BGM 사용 여부
     "bgm_volume": 0.18,           # BGM 볼륨 (0~1)
-    "transition": "none",         # none | fade
+    "bgm_ducking": True,          # 나레이션 시 BGM 자동 감쇠(사이드체인)
+    "transition": "none",         # none | fade | crossfade
     "transition_duration": 0.3,   # 전환 길이(초)
     # --- 레이아웃/제목 ---
     "fit_mode": "cover",          # cover=꽉채우기 | contain=박스형

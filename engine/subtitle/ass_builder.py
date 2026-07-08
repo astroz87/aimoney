@@ -7,13 +7,19 @@
 
 from __future__ import annotations
 
+import sys
+
 # 9:16 세로 해상도
 PLAY_W = 1080
 PLAY_H = 1920
 
+# 플랫폼별 한국어 기본 폰트.
+# fonts/ 폴더에 .ttf/.otf 를 두면 렌더러가 fontsdir 로 우선 사용한다(fonts/README.md 참고).
+DEFAULT_FONT = "Malgun Gothic" if sys.platform.startswith("win") else "Noto Sans CJK KR"
+
 # 기본 자막 스타일 (템플릿에서 오버라이드 가능)
 DEFAULT_SUBTITLE_STYLE = {
-    "font": "Noto Sans CJK KR",
+    "font": DEFAULT_FONT,
     "size": 64,
     "primary": "&H00FFFFFF",      # 글자색 (ASS BGR, 흰색)
     "outline_color": "&H00000000",  # 외곽선색 (검정)
@@ -30,7 +36,7 @@ DEFAULT_SUBTITLE_STYLE = {
 
 # 상단 제목(persistent) 기본 스타일 (레퍼런스 템플릿의 상단 헤드라인)
 DEFAULT_TITLE_STYLE = {
-    "font": "Noto Sans CJK KR",
+    "font": DEFAULT_FONT,
     "size": 78,
     "primary": "&H0000FFFF",      # 노란색
     "outline_color": "&H00000000",

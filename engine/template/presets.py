@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from engine.subtitle.ass_builder import DEFAULT_FONT
+
 WHITE = "&H00FFFFFF"
 BLACK = "&H00000000"
 YELLOW = "&H0000FFFF"
@@ -25,7 +27,7 @@ BOX_NONE = "&HFF000000"     # 박스 없음(완전 투명)
 
 def _title(size=78, primary=YELLOW, box=BOX_NONE, align=8, mv=120, outline=4, wrap=16):
     return {
-        "font": "Noto Sans CJK KR", "size": size, "primary": primary,
+        "font": DEFAULT_FONT, "size": size, "primary": primary,
         "outline_color": BLACK, "box_color": box, "bold": 1,
         "border_style": 1 if box == BOX_NONE else 3, "outline": outline, "shadow": 2,
         "alignment": align, "margin_v": mv, "wrap_max": wrap,
@@ -34,7 +36,7 @@ def _title(size=78, primary=YELLOW, box=BOX_NONE, align=8, mv=120, outline=4, wr
 
 def _cap(size=62, primary=WHITE, box=BOX_NONE, align=2, mv=220, outline=4, wrap=15):
     return {
-        "font": "Noto Sans CJK KR", "size": size, "primary": primary,
+        "font": DEFAULT_FONT, "size": size, "primary": primary,
         "outline_color": BLACK, "box_color": box, "bold": 1,
         "border_style": 1 if box == BOX_NONE else 3, "outline": outline, "shadow": 2,
         "alignment": align, "margin_v": mv, "wrap_max": wrap,
@@ -62,7 +64,7 @@ PRESETS: dict[str, dict] = {
         "fit_mode": "contain", "show_title": True,
         "title_style": _title(size=72, primary=BLACK, box=BOX_NONE, align=8, mv=90, outline=3, wrap=17),
         "subtitle_style": _cap(size=60, primary=NEAR_BLACK, box=BOX_NONE, align=2, mv=150, outline=3, wrap=18),
-        "edit_settings": {"bg_color": "#f4f4f4", "transition": "fade",
+        "edit_settings": {"bg_color": "#f4f4f4", "transition": "crossfade",
                           "transition_duration": 0.2, "bgm_volume": 0.15},
         "script_tone": "이슈/사연 전달, 궁금증 유발",
     },
@@ -74,7 +76,7 @@ PRESETS: dict[str, dict] = {
         "fit_mode": "contain", "show_title": True,
         "title_style": _title(size=76, primary=YELLOW, box=BOX_NONE, align=8, mv=110, outline=4, wrap=16),
         "subtitle_style": _cap(size=64, primary=GREEN, box=BOX_NONE, align=2, mv=170, outline=5, wrap=15),
-        "edit_settings": {"bg_color": "#000000", "transition": "fade",
+        "edit_settings": {"bg_color": "#000000", "transition": "crossfade",
                           "transition_duration": 0.2, "bgm_volume": 0.2},
         "script_tone": "몰입감 있는 사연/드라마 나레이션",
     },
@@ -86,7 +88,7 @@ PRESETS: dict[str, dict] = {
         "fit_mode": "contain", "show_title": True,
         "title_style": _title(size=80, primary=YELLOW, box=BOX_NONE, align=8, mv=100, outline=5, wrap=13),
         "subtitle_style": _cap(size=62, primary=WHITE, box=BOX_NONE, align=2, mv=180, outline=4, wrap=16),
-        "edit_settings": {"bg_color": "#000000", "transition": "fade",
+        "edit_settings": {"bg_color": "#000000", "transition": "crossfade",
                           "transition_duration": 0.25, "bgm_volume": 0.18},
         "script_tone": "차분하고 신뢰감 있는 정보 전달",
     },
@@ -97,7 +99,7 @@ PRESETS: dict[str, dict] = {
         "description": "굵은 노란 강조 자막 + 빠른 전환. 후기/추천 톤.",
         "fit_mode": "cover", "show_title": False, "title_style": {},
         "subtitle_style": _cap(size=66, primary=YELLOW, box=BOX_NONE, mv=240, outline=4, wrap=15),
-        "edit_settings": {"bg_color": "#1a1200", "transition": "fade",
+        "edit_settings": {"bg_color": "#1a1200", "transition": "crossfade",
                           "transition_duration": 0.18, "bgm_volume": 0.2},
         "script_tone": "친근한 후기체, 실사용 느낌으로 추천",
     },
@@ -107,7 +109,7 @@ PRESETS: dict[str, dict] = {
         "description": "중앙 강조 자막 + 페이드. Before/After 변화 강조.",
         "fit_mode": "cover", "show_title": False, "title_style": {},
         "subtitle_style": _cap(size=70, primary=WHITE, box=BOX_DARK, align=8, mv=120, outline=3, wrap=14),
-        "edit_settings": {"bg_color": "#0e1116", "transition": "fade",
+        "edit_settings": {"bg_color": "#0e1116", "transition": "crossfade",
                           "transition_duration": 0.35, "bgm_volume": 0.18},
         "script_tone": "문제→해결 대비 강조, 전후 변화가 확 느껴지게",
     },

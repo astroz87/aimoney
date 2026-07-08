@@ -52,7 +52,8 @@ class EditSettingsUpdate(BaseModel):
     bg_color: str | None = None
     bgm_enabled: bool | None = None
     bgm_volume: float | None = None
-    transition: str | None = None            # none | fade
+    bgm_ducking: bool | None = None
+    transition: str | None = None            # none | fade | crossfade
     transition_duration: float | None = None
     # 레이아웃/제목/자막 스타일 (자막 스타일은 모든 자막에 일괄 적용됨)
     fit_mode: str | None = None              # cover | contain
@@ -81,7 +82,7 @@ def update_edit_settings(
     current = resolve_edit_settings(p.edit_settings)
     for k, v in payload.model_dump(exclude_none=True).items():
         current[k] = v
-    if current.get("transition") not in ("none", "fade"):
+    if current.get("transition") not in ("none", "fade", "crossfade"):
         current["transition"] = "none"
     if current.get("fit_mode") not in ("cover", "contain"):
         current["fit_mode"] = "cover"

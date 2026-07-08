@@ -13,7 +13,8 @@ from .base import ScriptGenerator
 class MockScriptGenerator(ScriptGenerator):
     def generate(self, *, product_ko: str, category: str,
                  top_clips: list[Clip], selected_text: str = "",
-                 tone: str = "") -> list[Scene]:
+                 tone: str = "", product_zh: str = "",
+                 source_site: str = "") -> list[Scene]:
         name = product_ko or "이 제품"
         top = top_clips[0] if top_clips else None
         hook_need = "가장 강한 변화(before/after)가 보이는 장면"

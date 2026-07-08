@@ -162,12 +162,14 @@ async function loadAudioPanel() {
       <label>배경색<input id="a-bg" type="color" value="${s.bg_color || '#202430'}"></label>
       <label>전환<select id="a-trans">
         <option value="none" ${s.transition === 'none' ? 'selected' : ''}>없음</option>
-        <option value="fade" ${s.transition === 'fade' ? 'selected' : ''}>페이드</option>
+        <option value="crossfade" ${s.transition === 'crossfade' ? 'selected' : ''}>크로스페이드(권장)</option>
+        <option value="fade" ${s.transition === 'fade' ? 'selected' : ''}>페이드(암전)</option>
       </select></label>
       <label>전환 길이(초)<input id="a-transdur" type="number" step="0.1" min="0" max="2" value="${s.transition_duration}"></label>
       <label>BGM 볼륨<input id="a-bgmvol" type="range" min="0" max="1" step="0.02" value="${s.bgm_volume}"></label>
     </div>
     <label style="margin-top:8px"><input type="checkbox" id="a-bgmon" ${s.bgm_enabled ? 'checked' : ''}> BGM 사용</label>
+    <label style="margin-top:4px"><input type="checkbox" id="a-duck" ${s.bgm_ducking !== false ? 'checked' : ''}> 나레이션 시 BGM 자동 줄이기(더킹)</label>
     <div class="panel-ops">
       <button class="btn primary" onclick="saveAudio()">배경/전환 저장</button>
       <label class="btn" style="cursor:pointer">BGM 업로드<input type="file" accept="audio/*" hidden onchange="uploadBgm(this.files[0])"></label>
@@ -183,6 +185,7 @@ async function saveAudio() {
     transition_duration: parseFloat(document.getElementById("a-transdur").value),
     bgm_volume: parseFloat(document.getElementById("a-bgmvol").value),
     bgm_enabled: document.getElementById("a-bgmon").checked,
+    bgm_ducking: document.getElementById("a-duck").checked,
   };
   try { await api("PUT", `/api/projects/${PID}/edit-settings`, body); audMsg("저장됨 ✓"); }
   catch (e) { audMsg("실패: " + e.message); }
@@ -382,7 +385,7 @@ async function reRender() {
     await api("POST", `/api/projects/${PID}/timeline`, {});
     const r = await api("POST", `/api/projects/${PID}/render`, {});
     await pollRender(r.job_id);
-  } catch (e) { edJob("실패: " + e.message); }
+  } catch (e) { edJob("실패: " + e.message, reRender); }
 }
 
 async function pollRender(jobId) {
@@ -397,12 +400,24 @@ async function pollRender(jobId) {
       v.load();
       return;
     }
-    if (j.status === "failed") { edJob("렌더 실패: " + j.log); return; }
+    if (j.status === "failed") { edJob("렌더 실패: " + j.log, reRender); return; }
   }
 }
 
 const val = (id) => document.getElementById(id).value;
 const msg = (m) => { const e = document.getElementById("scene-msg"); if (e) e.textContent = m; };
-const edJob = (m) => { document.getElementById("ed-job").textContent = m; };
+// 실패 시 retryFn 을 넘기면 "재시도" 버튼이 함께 표시된다
+const edJob = (m, retryFn) => {
+  const el = document.getElementById("ed-job");
+  el.textContent = m;
+  if (retryFn) {
+    const b = document.createElement("button");
+    b.className = "btn small";
+    b.textContent = "재시도";
+    b.style.marginLeft = "8px";
+    b.onclick = retryFn;
+    el.appendChild(b);
+  }
+};
 
 if (PID) load();

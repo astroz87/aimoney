@@ -40,3 +40,12 @@ logs/
 .DS_Store
 .idea/
 .vscode/
+
+# 자막 폰트 파일 (라이선스/용량 — fonts/README.md 참고)
+fonts/*.ttf
+fonts/*.otf
+fonts/*.TTF
+fonts/*.OTF
+
+# 로컬 설치 마커 (run.bat)
+.deps_installed

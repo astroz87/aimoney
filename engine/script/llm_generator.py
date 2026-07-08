@@ -27,10 +27,14 @@ class LLMScriptGenerator(ScriptGenerator):
 
     def generate(self, *, product_ko: str, category: str,
                  top_clips: list[Clip], selected_text: str = "",
-                 tone: str = "") -> list[Scene]:
-        prompt = self._build_prompt(product_ko, category, top_clips, selected_text, tone)
+                 tone: str = "", product_zh: str = "",
+                 source_site: str = "") -> list[Scene]:
+        prompt = self._build_prompt(
+            product_ko, category, top_clips, selected_text, tone,
+            product_zh=product_zh, source_site=source_site,
+        )
         try:
-            raw = self._llm.complete(prompt, system=_SYSTEM, max_tokens=1500, temperature=0.8)
+            raw = self._llm.complete(prompt, system=_SYSTEM, max_tokens=1500)
             scenes = self._parse(raw)
             if scenes:
                 return scenes
@@ -40,16 +44,20 @@ class LLMScriptGenerator(ScriptGenerator):
         return MockScriptGenerator().generate(
             product_ko=product_ko, category=category,
             top_clips=top_clips, selected_text=selected_text, tone=tone,
+            product_zh=product_zh, source_site=source_site,
         )
 
-    def _build_prompt(self, product_ko, category, top_clips, selected_text, tone="") -> str:
+    def _build_prompt(self, product_ko, category, top_clips, selected_text, tone="",
+                      *, product_zh="", source_site="") -> str:
         clip_lines = "\n".join(
-            f"- {c.clip_id}: hook={c.hook_score}, tags={c.tags}, {c.description}"
+            f"- {c.clip_id}: 길이 {c.duration:.1f}초, hook={c.hook_score}, tags={c.tags}, {c.description}"
             for c in top_clips[:6]
         ) or "- (분석된 컷 없음)"
         tone_line = f"톤/스타일 가이드: {tone}\n" if tone else ""
+        zh_line = f"상품명(중국어 원문): {product_zh}\n" if product_zh else ""
+        site_line = f"수집 사이트: {source_site}\n" if source_site else ""
         return (
-            f"상품명: {product_ko}\n카테고리: {category}\n{tone_line}"
+            f"상품명: {product_ko}\n{zh_line}카테고리: {category}\n{site_line}{tone_line}"
             f"상품 설명(원문 발췌): {selected_text[:300]}\n\n"
             f"후킹 컷 후보:\n{clip_lines}\n\n"
             f"{SCRIPT_RULES}\n\n"

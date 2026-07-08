@@ -4,13 +4,17 @@ GET    /api/projects
 POST   /api/projects
 GET    /api/projects/{id}
 PATCH  /api/projects/{id}
+DELETE /api/projects/{id}
 """
 
 from __future__ import annotations
 
+import shutil
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from config import settings
 from app.db.database import get_session
 from app.schemas import (
     ProjectCreate,
@@ -56,6 +60,19 @@ def get_project(product_id: str, db: Session = Depends(get_session)):
     detail.scenes.sort(key=lambda s: s.scene_no)
     detail.clips.sort(key=lambda c: c.hook_score, reverse=True)
     return detail
+
+
+@router.delete("/{product_id}")
+def delete_project(product_id: str, db: Session = Depends(get_session)):
+    """프로젝트와 모든 산출물(DB 레코드 + data/output 폴더)을 삭제한다."""
+    project = project_service.get_project(db, product_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다")
+    db.delete(project)  # ORM cascade 로 assets/clips/scenes(+tts)/timeline/renders/jobs 삭제
+    db.commit()
+    for folder in (settings.project_dir(product_id), settings.output_project_dir(product_id)):
+        shutil.rmtree(folder, ignore_errors=True)
+    return {"deleted": product_id}
 
 
 @router.patch("/{product_id}", response_model=ProjectOut)

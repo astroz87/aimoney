@@ -34,7 +34,9 @@ def generate_script(project_id: str, provider: str | None = None) -> list[dict]:
         if project is None:
             raise RuntimeError("프로젝트를 찾을 수 없습니다")
         product_ko = project.product_ko
+        product_zh = project.product_zh
         category = project.category
+        source_site = project.source_site
         selected = project.selected_text
         tone = (project.edit_settings or {}).get("script_tone", "")
         top = _top_clips(db, project_id)
@@ -52,6 +54,7 @@ def generate_script(project_id: str, provider: str | None = None) -> list[dict]:
     scenes = gen.generate(
         product_ko=product_ko, category=category,
         top_clips=top, selected_text=selected, tone=tone,
+        product_zh=product_zh, source_site=source_site,
     )
 
     _save_scenes(project_id, scenes)

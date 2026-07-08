@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from config import settings
@@ -25,6 +25,19 @@ _engine = create_engine(
     connect_args={"check_same_thread": False},
     future=True,
 )
+
+
+@event.listens_for(_engine, "connect")
+def _set_sqlite_pragma(dbapi_conn, _record) -> None:
+    """커넥션마다 SQLite 안정성 PRAGMA 적용.
+
+    - WAL: 백그라운드 잡(렌더/TTS)과 웹 요청이 동시에 써도 락 충돌 최소화
+    - busy_timeout: 잠금 시 즉시 실패 대신 5초 대기
+    """
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA journal_mode=WAL")
+    cur.execute("PRAGMA busy_timeout=5000")
+    cur.close()
 
 SessionLocal = sessionmaker(bind=_engine, autoflush=False, expire_on_commit=False, future=True)
 

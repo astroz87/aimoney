@@ -85,7 +85,7 @@ async function runJob(kind) {
   try {
     const r = await api("POST", `/api/projects/${pid()}/${kind}`, {});
     await pollJob(r.job_id, kind);
-  } catch (e) { setJob(`${kind} 실패: ` + e.message, "failed"); }
+  } catch (e) { setJob(`${kind} 실패: ` + e.message, "failed", () => runJob(kind)); }
 }
 
 async function pollJob(jobId, kind) {
@@ -94,15 +94,35 @@ async function pollJob(jobId, kind) {
     const j = await api("GET", `/api/jobs/${jobId}`);
     setJob(`${kind}: ${j.status} (${j.progress}%) ${j.log || ""}`, j.status === "failed" ? "failed" : "running");
     if (j.status === "done") { setJob(`${kind} 완료 — 새로고침`, "done"); setTimeout(() => location.reload(), 800); return; }
-    if (j.status === "failed") { setJob(`${kind} 실패: ${j.log}`, "failed"); return; }
+    if (j.status === "failed") { setJob(`${kind} 실패: ${j.log}`, "failed", () => runJob(kind)); return; }
   }
 }
 
-function setJob(msg, cls) {
+// 실패 시 retryFn 을 넘기면 "재시도" 버튼이 함께 표시된다
+function setJob(msg, cls, retryFn) {
   const el = document.getElementById("job-status");
   if (!el) return;
   el.textContent = msg;
   el.className = "job-status " + (cls || "");
+  if (retryFn) {
+    const b = document.createElement("button");
+    b.className = "btn small";
+    b.textContent = "재시도";
+    b.style.marginLeft = "8px";
+    b.onclick = retryFn;
+    el.appendChild(b);
+  }
+}
+
+// --- 프로젝트 삭제 ---
+async function deleteProject(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!confirm(`프로젝트 ${id} 를 삭제할까요?\nDB 기록과 data/output 폴더가 모두 지워집니다.`)) return;
+  try {
+    await api("DELETE", `/api/projects/${id}`);
+    if (pid() === id) location.href = "/";
+    else location.reload();
+  } catch (e) { alert("삭제 실패: " + e.message); }
 }
 
 // --- 설정 ---

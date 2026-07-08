@@ -32,17 +32,18 @@ def _role_caption(role: str, product: str, idx: int) -> tuple[str, str]:
 
 
 def fill_scene_texts(llm, *, product_ko: str, category: str, tone: str,
-                     clips_info: list[dict]) -> dict[int, dict]:
-    """clips_info: [{scene_no, role, clip_id, tags, description}] (영상 순서).
+                     clips_info: list[dict], product_zh: str = "") -> dict[int, dict]:
+    """clips_info: [{scene_no, role, clip_id, tags, description, duration}] (영상 순서).
 
+    duration(초)이 있으면 씬별 나레이션 글자 수 예산으로 프롬프트에 반영된다.
     Returns {scene_no: {"voice_text":..., "caption_text":...}} (컷 순서 유지).
     """
     if not clips_info:
         return {}
 
-    prompt = _build_prompt(product_ko, category, tone, clips_info)
+    prompt = _build_prompt(product_ko, category, tone, clips_info, product_zh=product_zh)
     try:
-        raw = llm.complete(prompt, system=_SYSTEM, max_tokens=1500, temperature=0.8)
+        raw = llm.complete(prompt, system=_SYSTEM, max_tokens=1500)
         parsed = _parse(raw)
         if parsed and len(parsed) >= 1:
             out = {}
@@ -67,18 +68,29 @@ def fill_scene_texts(llm, *, product_ko: str, category: str, tone: str,
     return out
 
 
-def _build_prompt(product_ko, category, tone, clips_info) -> str:
+def _build_prompt(product_ko, category, tone, clips_info, *, product_zh="") -> str:
+    from .base import CHARS_PER_SEC
+
     tone_line = f"톤/스타일: {tone}\n" if tone else ""
-    lines = "\n".join(
-        f"{i+1}. [{ci['role']}] 컷 {ci['clip_id']} — 태그:{ci.get('tags', [])}, {ci.get('description', '')}"
-        for i, ci in enumerate(clips_info)
-    )
+    zh_line = f"상품명(중국어 원문): {product_zh}\n" if product_zh else ""
+
+    def _line(i: int, ci: dict) -> str:
+        dur = float(ci.get("duration", 0) or 0)
+        budget = f", 길이 {dur:.1f}초 → 나레이션 약 {round(dur * CHARS_PER_SEC)}자" if dur > 0 else ""
+        return (f"{i + 1}. [{ci['role']}] 컷 {ci['clip_id']}"
+                f" — 태그:{ci.get('tags', [])}, {ci.get('description', '')}{budget}")
+
+    lines = "\n".join(_line(i, ci) for i, ci in enumerate(clips_info))
     return (
-        f"상품명: {product_ko}\n카테고리: {category}\n{tone_line}"
+        f"상품명: {product_ko}\n{zh_line}카테고리: {category}\n{tone_line}"
         f"\n아래는 이미 편집된 영상 컷 순서다(순서 고정):\n{lines}\n\n"
         "각 컷에 맞는 나레이션(voice_text)과 짧은 자막(caption_text)을 "
-        "컷 개수만큼, 같은 순서로 작성해라. 첫 컷은 12~25자 강한 후킹, "
-        "마지막은 CTA. 아래 JSON 배열만 출력(설명 금지):\n"
+        "컷 개수만큼, 같은 순서로 작성해라.\n"
+        f"- voice_text 글자 수는 각 컷의 '나레이션 약 N자' 예산에 맞춘다"
+        f"(초당 {CHARS_PER_SEC}자 발화 기준). 길면 TTS가 컷보다 길어져 싱크가 깨진다.\n"
+        "- 첫 컷은 12~25자 강한 후킹, 마지막 컷은 CTA.\n"
+        "- caption_text 는 15자 내외 압축 자막.\n"
+        "아래 JSON 배열만 출력(설명 금지):\n"
         '[{"voice_text":"...","caption_text":"..."}, ...]'
     )
 

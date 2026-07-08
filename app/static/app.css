@@ -19,6 +19,9 @@ input,select{width:100%;margin-top:4px;padding:8px 10px;background:#0e1116;borde
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.tiny{padding:3px 8px;font-size:12px}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn.danger{background:#3a2026;border-color:#7a2b36;color:#ff8f9a}
+.btn.danger:hover{border-color:#e5484d}
 .pipeline{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
 .list{width:100%;border-collapse:collapse;margin-top:8px}
 .list th,.list td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font-size:14px}
