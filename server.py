@@ -42,13 +42,20 @@ app.include_router(pages.router)
 app.include_router(projects.router)
 app.include_router(sources.router)
 
-# 이후 Phase 에서 추가 등록:
-#   settings, assets/analysis, script, tts, render, packages, jobs
-try:  # 점진 등록 — 아직 없는 라우터는 무시
-    from app.api import settings as settings_api  # noqa: E402
-    app.include_router(settings_api.router)
-except ImportError:
-    pass
+
+def _try_include(module_name: str) -> None:
+    """점진 등록 — 아직 구현되지 않은 라우터는 조용히 건너뛴다."""
+    import importlib
+
+    try:
+        mod = importlib.import_module(f"app.api.{module_name}")
+        app.include_router(mod.router)
+    except ImportError:
+        pass
+
+
+for _m in ("settings", "jobs", "assets", "analysis", "script", "tts", "render", "packages"):
+    _try_include(_m)
 
 # --- 정적 파일 ---
 _STATIC_DIR = Path(__file__).resolve().parent / "app" / "static"

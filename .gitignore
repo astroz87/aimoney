@@ -24,12 +24,13 @@ output/
 downloads/
 data/
 
-# 확장 프로그램 아이콘(png)은 커밋 허용
 *.mp4
 *.jpg
 *.jpeg
 *.png
 !docs/**/*.png
+# 확장 프로그램 아이콘은 커밋 허용
+!extension/icons/*.png
 
 # 로그
 *.log
