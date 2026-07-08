@@ -38,8 +38,12 @@
       <div class="stock-search">
         <select id="tpl-select" style="flex:1"></select>
         <button class="btn primary" onclick="applyTemplate()">적용</button>
+        <button class="btn" id="tpl-del" onclick="deleteTemplate()" style="display:none">삭제</button>
       </div>
       <p id="tpl-desc" class="hint"></p>
+      <div class="stock-search">
+        <button class="btn" onclick="saveTemplate()">＋ 현재 스타일을 템플릿으로 저장</button>
+      </div>
       <span id="tpl-msg" class="hint"></span>
     </details>
 

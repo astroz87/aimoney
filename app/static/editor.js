@@ -112,7 +112,7 @@ function fillTemplateSelect() {
   if (!sel) return;
   const cur = (STATE.audio && STATE.audio.template_id) || "";
   sel.innerHTML = TEMPLATES.map(t =>
-    `<option value="${t.id}" ${t.id === cur ? "selected" : ""}>${t.name}</option>`).join("");
+    `<option value="${t.id}" ${t.id === cur ? "selected" : ""}>${t.is_custom ? '★ ' : ''}${t.name}</option>`).join("");
   showTplDesc();
   sel.onchange = showTplDesc;
 }
@@ -120,6 +120,24 @@ function showTplDesc() {
   const sel = document.getElementById("tpl-select");
   const t = TEMPLATES.find(x => x.id === sel.value);
   document.getElementById("tpl-desc").textContent = t ? t.description : "";
+  document.getElementById("tpl-del").style.display = (t && t.is_custom) ? "" : "none";
+}
+async function saveTemplate() {
+  const name = prompt("템플릿 이름 (현재 자막/제목/배경/전환 스타일을 저장):");
+  if (!name) return;
+  tplMsg("저장 중...");
+  try {
+    await api("POST", `/api/projects/${PID}/save-template`, { name });
+    TEMPLATES = []; await loadTemplates(); tplMsg("템플릿 저장됨 ★");
+  } catch (e) { tplMsg("실패: " + e.message); }
+}
+async function deleteTemplate() {
+  const id = document.getElementById("tpl-select").value;
+  if (!confirm("이 커스텀 템플릿을 삭제할까요?")) return;
+  try {
+    await api("DELETE", `/api/templates/${id}`);
+    TEMPLATES = []; await loadTemplates(); tplMsg("삭제됨");
+  } catch (e) { tplMsg("실패: " + e.message); }
 }
 async function applyTemplate() {
   const id = document.getElementById("tpl-select").value;
