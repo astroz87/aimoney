@@ -17,6 +17,9 @@ from app.services import project_service
 
 router = APIRouter(prefix="/api", tags=["sources"])
 
+# 상품명 미확보 시 기본값 — 재수집 시 실제 이름으로 교체 가능해야 하므로 빈 값 취급
+_PLACEHOLDER_NAME = "미정 상품"
+
 
 def _find_existing(db: Session, url: str) -> Project | None:
     """동일 source_url 로 이미 수집된 프로젝트를 찾는다 (중복 수집 방지)."""
@@ -61,7 +64,17 @@ def import_source(payload: ImportSourceRequest, db: Session = Depends(get_sessio
     """
     existing = _find_existing(db, payload.url)
     if existing is not None:
-        _append_new_assets(db, existing, payload.image_urls, payload.video_candidates)
+        added = _append_new_assets(db, existing, payload.image_urls, payload.video_candidates)
+        # 재수집으로 얻은 정보로 빈 필드 보강 (기존 값은 덮지 않음)
+        new_name = payload.product_ko.strip() or (
+            payload.product_name_candidates[0].strip() if payload.product_name_candidates else ""
+        )
+        if existing.product_ko in ("", _PLACEHOLDER_NAME) and new_name:
+            existing.product_ko = new_name
+        if not existing.category and payload.category:
+            existing.category = payload.category
+        if added and existing.status == "created":
+            existing.status = "sourced"
         db.flush()  # autoflush=False 이므로 스냅샷 전에 관계 반영
         db.expire(existing, ["assets"])
         project_service.write_snapshot(db, existing)
@@ -85,7 +98,7 @@ def import_source(payload: ImportSourceRequest, db: Session = Depends(get_sessio
         if payload.product_name_candidates:
             product_ko = payload.product_name_candidates[0].strip()
         else:
-            product_ko = (payload.title or "미정 상품").strip()
+            product_ko = (payload.title or _PLACEHOLDER_NAME).strip()
 
     project = project_service.create_project(
         db,

@@ -375,3 +375,14 @@ def test_filler_prompt_includes_char_budget():
     ], product_zh="桌面理线器")
     assert "약 16자" in p         # 3.0초 × 5.5자 ≈ 16자
     assert "桌面理线器" in p       # C3: 중국어 원문 컨텍스트
+
+def test_llm_parse_clamps_target_duration():
+    from engine.script.llm_generator import LLMScriptGenerator
+
+    gen = LLMScriptGenerator(llm=None)
+    scenes = gen._parse(
+        '[{"scene":1,"role":"hook","voice_text":"a","target_duration":60},'
+        '{"scene":2,"role":"cta","voice_text":"b","target_duration":0.2}]'
+    )
+    assert scenes[0].target_duration == 15.0
+    assert scenes[1].target_duration == 1.0

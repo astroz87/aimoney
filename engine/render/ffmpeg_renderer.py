@@ -269,7 +269,9 @@ def render_video(scene_specs: list[dict], subtitle_path: str | None,
         esc = str(Path(subtitle_path).resolve()).replace("\\", "/").replace(":", "\\:")
         ass_f = f"ass='{esc}'"
         fonts_dir = Path(__file__).resolve().parents[2] / "fonts"
-        if fonts_dir.is_dir() and any(fonts_dir.glob("*.[ot]tf")):
+        if fonts_dir.is_dir() and any(
+            p.suffix.lower() in (".ttf", ".otf") for p in fonts_dir.iterdir() if p.is_file()
+        ):
             fesc = str(fonts_dir).replace("\\", "/").replace(":", "\\:")
             ass_f += f":fontsdir='{fesc}'"
         filters.append(ass_f)

@@ -68,6 +68,18 @@ def delete_project(product_id: str, db: Session = Depends(get_session)):
     project = project_service.get_project(db, product_id)
     if project is None:
         raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다")
+    # 실행 중인 백그라운드 잡이 있으면 삭제 금지 — 잡이 삭제된 레코드에 쓰거나
+    # 지워진 폴더를 재생성하는 레이스를 막는다.
+    from app.db.models_orm import Job
+
+    active = db.query(Job).filter(
+        Job.project_id == product_id, Job.status.in_(("pending", "running"))
+    ).count()
+    if active:
+        raise HTTPException(
+            status_code=409,
+            detail="실행 중인 작업이 있습니다. 완료 후 다시 삭제하세요.",
+        )
     db.delete(project)  # ORM cascade 로 assets/clips/scenes(+tts)/timeline/renders/jobs 삭제
     db.commit()
     for folder in (settings.project_dir(product_id), settings.output_project_dir(product_id)):

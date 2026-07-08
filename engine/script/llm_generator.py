@@ -86,7 +86,8 @@ class LLMScriptGenerator(ScriptGenerator):
                 voice_text=str(item.get("voice_text", "")),
                 caption_text=str(item.get("caption_text", item.get("voice_text", ""))),
                 visual_need=str(item.get("visual_need", "")),
-                target_duration=float(item.get("target_duration", 3.0) or 3.0),
+                # LLM 이 준 값을 신뢰하지 않고 씬 길이로 유효한 범위로 클램프
+                target_duration=min(15.0, max(1.0, float(item.get("target_duration", 3.0) or 3.0))),
                 emotion=str(item.get("emotion", "neutral")),
                 pace=str(item.get("pace", "normal")),
             ))

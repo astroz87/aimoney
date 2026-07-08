@@ -71,7 +71,7 @@ def save_scenes_from_dicts(project_id: str, scene_dicts: list[dict]) -> None:
         voice_text=str(d.get("voice_text", "")),
         caption_text=str(d.get("caption_text", d.get("voice_text", ""))),
         visual_need=str(d.get("visual_need", "")),
-        target_duration=float(d.get("target_duration", 3.0) or 3.0),
+        target_duration=min(15.0, max(1.0, float(d.get("target_duration", 3.0) or 3.0))),
         emotion=str(d.get("emotion", "neutral")),
         pace=str(d.get("pace", "normal")),
     ) for i, d in enumerate(scene_dicts)]
