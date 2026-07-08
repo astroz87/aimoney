@@ -1,18 +1,35 @@
-# Threads × Coupang Partners 마케팅 자동화 CLI 의존성
+# 멀티채널 숏폼 어필리에이트 자동화 시스템 의존성
 # Python 3.10+
 
-# 웹 자동화 (스크래핑 / 자동 포스팅)
+# --- 웹 대시보드 (FastAPI) ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+jinja2>=3.1.3
+python-multipart>=0.0.9        # 파일 업로드(multipart)
+
+# --- 데이터 저장 ---
+SQLAlchemy>=2.0.29
+
+# --- 웹 자동화 (영상 후보 다운로드 / 기존 스크래핑) ---
 playwright>=1.44.0
+aiohttp>=3.9.5
 
-# AI 연동 (Claude)
-anthropic>=0.40.0
+# --- LLM Provider (선택적, 키 없으면 Mock 폴백) ---
+anthropic>=0.40.0              # Claude
+# google-generativeai>=0.7.0   # Gemini (설정 시 설치)
+# openai>=1.30.0               # GPT (설정 시 설치)
 
-# 미디어 처리
+# --- TTS Provider ---
+edge-tts>=6.1.0                # 무료 한국어 TTS (MVP 실동작)
+
+# --- 영상 분석 / 처리 ---
 opencv-python>=4.9.0
-Pillow>=10.3.0
+scenedetect>=0.6.3             # 컷 분할 (PySceneDetect)
+Pillow>=10.3.0                 # 썸네일 / 자막 미리보기
 
-# 환경 변수 관리
+# --- 환경 변수 관리 ---
 python-dotenv>=1.0.1
 
-# HTTP 다운로드 (미디어 파일 비동기 다운로드)
-aiohttp>=3.9.5
+# 참고: 영상 렌더링은 시스템 ffmpeg/ffprobe 바이너리에 의존합니다.
+#   Ubuntu:  sudo apt-get install -y ffmpeg
+#   macOS:   brew install ffmpeg

@@ -1,0 +1,60 @@
+"""SQLAlchemy 엔진/세션 관리.
+
+SQLite 로컬 파일(app.db)을 사용한다. FastAPI 의존성 주입용 `get_session` 과
+스크립트/서비스용 컨텍스트 매니저 `session_scope` 를 함께 제공한다.
+"""
+
+from __future__ import annotations
+
+from contextlib import contextmanager
+from typing import Iterator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+from config import settings
+
+
+class Base(DeclarativeBase):
+    """모든 ORM 모델의 베이스."""
+
+
+# SQLite 는 기본적으로 스레드 간 커넥션 공유를 막으므로 check_same_thread=False.
+_engine = create_engine(
+    settings.db_url,
+    connect_args={"check_same_thread": False},
+    future=True,
+)
+
+SessionLocal = sessionmaker(bind=_engine, autoflush=False, expire_on_commit=False, future=True)
+
+
+def init_db() -> None:
+    """모든 테이블을 생성한다 (idempotent). 모델 임포트 후 호출."""
+    # 모델 등록을 위해 임포트 (순환참조 방지 위해 함수 내부 임포트)
+    from . import models_orm  # noqa: F401
+
+    Base.metadata.create_all(bind=_engine)
+
+
+def get_session() -> Iterator[Session]:
+    """FastAPI 의존성: 요청 스코프 세션."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def session_scope() -> Iterator[Session]:
+    """서비스/스크립트용: 커밋/롤백을 자동 처리하는 세션 컨텍스트."""
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()

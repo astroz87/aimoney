@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}프로젝트 목록{% endblock %}
+{% block content %}
+<section class="head-row">
+  <h1>상품 프로젝트</h1>
+  <button class="btn primary" onclick="document.getElementById('new-project').classList.toggle('hidden')">
+    + 새 프로젝트
+  </button>
+</section>
+
+<form id="new-project" class="card hidden" onsubmit="return createProject(event)">
+  <h3>새 프로젝트 생성</h3>
+  <div class="grid2">
+    <label>상품명(한국어)<input name="product_ko" required placeholder="케이블 정리 홀더"></label>
+    <label>상품명(중국어)<input name="product_zh" placeholder="桌面理线器"></label>
+    <label>카테고리
+      <select name="category">
+        <option value="">선택</option>
+        <option>살림템</option><option>수납/정리</option><option>육아템</option>
+        <option>인테리어</option><option>패션잡화</option><option>차량용품</option>
+      </select>
+    </label>
+    <label>소스 사이트<input name="source_site" placeholder="1688"></label>
+  </div>
+  <label>소스 URL<input name="source_url" placeholder="https://..."></label>
+  <button class="btn primary" type="submit">생성</button>
+</form>
+
+<table class="list">
+  <thead>
+    <tr><th>product_id</th><th>상품명</th><th>카테고리</th><th>사이트</th><th>권리</th><th>상태</th></tr>
+  </thead>
+  <tbody>
+    {% for p in projects %}
+    <tr onclick="location.href='/projects/{{ p.id }}'" class="clickable">
+      <td class="mono">{{ p.id }}</td>
+      <td>{{ p.product_ko or '—' }}</td>
+      <td>{{ p.category or '—' }}</td>
+      <td>{{ p.source_site or '—' }}</td>
+      <td><span class="badge usage-{{ 'ok' if p.usage_status == '확인됨' else ('no' if p.usage_status == '제외' else 'warn') }}">{{ p.usage_status }}</span></td>
+      <td><span class="badge status">{{ p.status }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">아직 프로젝트가 없습니다. 크롬 확장으로 수집하거나 위에서 생성하세요.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

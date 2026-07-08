@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}설정{% endblock %}
+{% block content %}
+<h1>⚙️ 설정</h1>
+<p class="hint">API 키는 저장 시 마스킹되어 표시됩니다. 마스킹된 값을 그대로 저장하면 기존 키가 유지됩니다. 우선순위: DB &gt; .env &gt; 기본값.</p>
+
+<form id="settings-form" onsubmit="return saveSettings(event)">
+  <section class="card">
+    <h3>기본 프로바이더</h3>
+    <div class="grid2">
+      <label>기본 LLM
+        <select name="default_llm_provider">
+          {% for v in ['mock','claude','gemini','openai'] %}
+          <option {{ 'selected' if settings.default_llm_provider == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>기본 TTS
+        <select name="default_tts_provider">
+          {% for v in ['mock','edge','gemini','typecast'] %}
+          <option {{ 'selected' if settings.default_tts_provider == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>대본 생성 LLM (오버라이드)
+        <select name="llm_provider_script">
+          <option value="">기본값 사용</option>
+          {% for v in ['mock','claude','gemini','openai'] %}
+          <option {{ 'selected' if settings.llm_provider_script == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>검색어 생성 LLM (오버라이드)
+        <select name="llm_provider_search">
+          <option value="">기본값 사용</option>
+          {% for v in ['mock','claude','gemini','openai'] %}
+          <option {{ 'selected' if settings.llm_provider_search == v else '' }}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Claude (Anthropic) <button type="button" class="btn tiny" onclick="testProvider('claude')">연결 테스트</button></h3>
+    <div class="grid2">
+      <label>API Key<input name="anthropic_api_key" value="{{ settings.anthropic_api_key }}" placeholder="sk-ant-..."></label>
+      <label>모델
+        <select name="claude_model">
+          {% for m in ['claude-opus-4-8','claude-sonnet-5','claude-haiku-4-5-20251001'] %}
+          <option {{ 'selected' if settings.claude_model == m else '' }}>{{ m }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Gemini (Google) <button type="button" class="btn tiny" onclick="testProvider('gemini')">연결 테스트</button></h3>
+    <div class="grid2">
+      <label>API Key<input name="gemini_api_key" value="{{ settings.gemini_api_key }}" placeholder="AIza..."></label>
+      <label>모델
+        <select name="gemini_model">
+          {% for m in ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'] %}
+          <option {{ 'selected' if settings.gemini_model == m else '' }}>{{ m }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>OpenAI (GPT) <button type="button" class="btn tiny" onclick="testProvider('openai')">연결 테스트</button></h3>
+    <div class="grid2">
+      <label>API Key<input name="openai_api_key" value="{{ settings.openai_api_key }}" placeholder="sk-..."></label>
+      <label>모델
+        <select name="openai_model">
+          {% for m in ['gpt-4o','gpt-4o-mini','gpt-4.1'] %}
+          <option {{ 'selected' if settings.openai_model == m else '' }}>{{ m }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <button class="btn primary" type="submit">저장</button>
+  <span id="save-status" class="hint"></span>
+</form>
+{% endblock %}
