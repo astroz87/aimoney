@@ -42,6 +42,18 @@
 </div>
 <div id="job-status" class="job-status"></div>
 
+{% if project.status == 'packaged' or project.status == 'rendered' %}
+<section class="card">
+  <h3>📦 결과물</h3>
+  <p>
+    {% if project.status == 'packaged' %}
+    <a class="btn primary" href="/api/projects/{{ project.id }}/download">패키지 ZIP 다운로드</a>
+    {% endif %}
+    <span class="hint">output/{{ project.id }}/ 에 final.mp4 · thumbnail.jpg · 플랫폼별 폴더가 생성되었습니다.</span>
+  </p>
+</section>
+{% endif %}
+
 <!-- 검색어 -->
 <section class="card">
   <h3>중국어 검색어</h3>
