@@ -13,6 +13,16 @@
   </div>
 </section>
 
+<div class="card" id="storyline-bar">
+  <b>🎬 워크플로우:</b>
+  <button class="btn" onclick="buildStoryline()">① 컷으로 스토리라인 조립</button>
+  <span class="arrow">→</span>
+  <button class="btn" onclick="fillScript()">② 대본 자동 채우기</button>
+  <span class="arrow">→</span>
+  <span class="hint">③ 아래에서 후킹·대본 편집 → ④ TTS → ⑤ 재렌더</span>
+  <span id="story-msg" class="hint"></span>
+</div>
+
 <div id="editor-root" data-pid="{{ project.id }}" class="editor-grid">
   <!-- 슬라이드(씬) 리스트 -->
   <div class="slide-col">

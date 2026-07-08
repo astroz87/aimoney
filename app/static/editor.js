@@ -52,6 +52,7 @@ async function loadTextPanel() {
           <option value="contain" ${s.fit_mode === 'contain' ? 'selected' : ''}>박스형(제목·자막 공간)</option>
         </select>
       </label>
+      <label>박스 세로위치(박스형)<input id="t-boxy" type="range" min="0" max="1" step="0.02" value="${s.box_y!=null?s.box_y:0.34}"></label>
       <label>자막 위치
         <select id="t-align">
           <option value="2" ${(cap.alignment||2)==2?'selected':''}>하단</option>
@@ -86,6 +87,7 @@ async function saveTextStyle() {
   ttl.primary = hexToAss(val("t-tcolor"));
   const body = {
     fit_mode: val("t-fit"),
+    box_y: parseFloat(val("t-boxy")),
     show_title: document.getElementById("t-showtitle").checked,
     title_text: val("t-title"),
     subtitle_style: cap, title_style: ttl,
@@ -298,6 +300,27 @@ async function sceneTTS() {
   try { const r = await api("POST", `/api/projects/${PID}/scenes/${STATE.selected}/tts`, {}); msg(`TTS 완료 (${r.duration}s)`); }
   catch (e) { msg("TTS 실패: " + e.message); }
 }
+
+// ---- 스토리라인 워크플로우 ----
+async function buildStoryline() {
+  if (!confirm("현재 컷들로 스토리라인을 새로 만듭니다. 기존 씬은 교체됩니다. 계속?")) return;
+  storyMsg("스토리라인 조립 중...");
+  try {
+    const r = await api("POST", `/api/projects/${PID}/storyline`, { count: 6 });
+    storyMsg(`스토리라인 ${r.scenes.length}씬 조립됨 (컷 배정 완료, 대본 비어있음)`);
+    STATE.selected = null; await load();
+  } catch (e) { storyMsg("실패: " + e.message); }
+}
+
+async function fillScript() {
+  storyMsg("대본 자동 채우는 중 (설정 LLM/Mock)...");
+  try {
+    const r = await api("POST", `/api/projects/${PID}/fill-script`, {});
+    storyMsg(`대본 채움 완료 (${r.scenes.length}씬). 후킹/대본을 다듬은 뒤 TTS 하세요.`);
+    await load();
+  } catch (e) { storyMsg("실패: " + e.message); }
+}
+const storyMsg = (m) => { const e = document.getElementById("story-msg"); if (e) e.textContent = m; };
 
 async function uploadSfx(file) {
   if (!file) return;

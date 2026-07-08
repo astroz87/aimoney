@@ -56,6 +56,9 @@ class EditSettingsUpdate(BaseModel):
     transition_duration: float | None = None
     # 레이아웃/제목/자막 스타일 (자막 스타일은 모든 자막에 일괄 적용됨)
     fit_mode: str | None = None              # cover | contain
+    box_scale: float | None = None
+    box_h: float | None = None
+    box_y: float | None = None
     show_title: bool | None = None
     title_text: str | None = None
     subtitle_style: dict | None = None

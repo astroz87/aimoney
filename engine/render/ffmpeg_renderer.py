@@ -33,9 +33,16 @@ def _hex_to_ff(color: str) -> str:
     return "0x202430"
 
 
+def _even(n: float) -> int:
+    """짝수로 내림 (libx264 요구)."""
+    v = int(n)
+    return v - (v % 2)
+
+
 def _scene_clip(spec: dict, out: Path, *, bg_color: str = "#202430",
                 transition: str = "none", transition_duration: float = 0.3,
-                fit_mode: str = "cover") -> Path:
+                fit_mode: str = "cover", box_scale: float = 0.94,
+                box_h: float = 0.60, box_y: float = 0.34) -> Path:
     """단일 scene 정규화 클립 생성 (배경색/전환/효과음/맞춤모드 지원).
 
     fit_mode: cover=꽉 채우기(크롭), contain=박스형(배경색 여백에 제목·자막 공간).
@@ -74,10 +81,14 @@ def _scene_clip(spec: dict, out: Path, *, bg_color: str = "#202430",
     # 비디오 필터: 맞춤 모드 → 정규화 + (옵션) 페이드 전환
     ffcolor = _hex_to_ff(bg_color)
     if fit_mode == "contain":
-        # 박스형: 전체 폭에 맞춰 축소 후 배경색으로 상/하 여백 → 제목·자막 공간 확보
+        # 박스형: box_scale×box_h 영역에 맞춰 축소 후 배경색 여백에 배치.
+        # box_y 로 세로 위치 조절(상단으로 올리면 하단 자막 공간 확보).
+        tw = max(2, _even(W * min(1.0, max(0.3, box_scale))))
+        th = max(2, _even(H * min(0.95, max(0.3, box_h))))
+        by = min(1.0, max(0.0, box_y))
         base = (
-            f"scale={W}:{H}:force_original_aspect_ratio=decrease,"
-            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={ffcolor}"
+            f"scale={tw}:{th}:force_original_aspect_ratio=decrease,"
+            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)*{by:.3f}:color={ffcolor}"
         )
     else:
         base = (
@@ -136,6 +147,9 @@ def render_video(scene_specs: list[dict], subtitle_path: str | None,
     bgm_volume = float(opts.get("bgm_volume", 0.18) or 0.18)
     bgm_enabled = opts.get("bgm_enabled", True)
     fit_mode = opts.get("fit_mode", "cover")
+    box_scale = float(opts.get("box_scale", 0.94) or 0.94)
+    box_h = float(opts.get("box_h", 0.60) or 0.60)
+    box_y = float(opts.get("box_y", 0.34))
 
     work = Path(work_dir)
     work.mkdir(parents=True, exist_ok=True)
@@ -148,7 +162,8 @@ def render_video(scene_specs: list[dict], subtitle_path: str | None,
     for i, spec in enumerate(scene_specs):
         cp = _scene_clip(spec, work / f"scene_{i+1:03d}.mp4",
                          bg_color=bg_color, transition=transition,
-                         transition_duration=transition_duration, fit_mode=fit_mode)
+                         transition_duration=transition_duration, fit_mode=fit_mode,
+                         box_scale=box_scale, box_h=box_h, box_y=box_y)
         clip_paths.append(cp)
         if progress_cb:
             progress_cb(int((i + 1) / n * 60))

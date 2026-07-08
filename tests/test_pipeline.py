@@ -16,6 +16,8 @@ from engine.stock.mock_provider import MockStockProvider
 from app.services.project_service import _en_slug
 from engine.subtitle.ass_builder import build_ass, _ts, _wrap_two_lines, _style_line
 from engine.template import get_preset, list_presets
+from engine.script.filler import fill_scene_texts
+from app.services.storyline_service import _assign_role
 from engine.package.disclosure import DISCLOSURE_TEXT, prepend_disclosure
 from engine.package.affiliate import providers_for_category, build_affiliate_links
 from engine.package.link_router import build_tracking_urls
@@ -102,6 +104,49 @@ def test_hex_to_ff_color():
     assert _hex_to_ff("101820") == "0x101820"
     assert _hex_to_ff("bad") == "0x202430"      # 잘못된 값 → 기본색
     assert _hex_to_ff("") == "0x202430"
+
+
+# ---------------- 스토리라인 워크플로우 (영상→대본) ----------------
+class _FakeClaude:
+    """Claude 역할: 컷 순서에 맞춘 대본 JSON 을 반환한다(실제 키 없이 경로 검증)."""
+    def __init__(self, payload):
+        self._payload = payload
+        self.calls = 0
+
+    def complete(self, prompt, *, system="", max_tokens=2000, temperature=0.7):
+        self.calls += 1
+        return self._payload
+
+
+def test_fill_scene_texts_uses_llm_output_in_order():
+    clips_info = [
+        {"scene_no": 1, "role": "hook", "clip_id": "clip_001", "tags": ["before_after"], "description": "전후"},
+        {"scene_no": 2, "role": "cta", "clip_id": "clip_002", "tags": [], "description": "제품"},
+    ]
+    claude = _FakeClaude(
+        '[{"voice_text":"이 장면 보고 바로 샀어요","caption_text":"보고 바로 샀다"},'
+        '{"voice_text":"자세한 건 아래 링크에서","caption_text":"아래 링크 확인"}]'
+    )
+    out = fill_scene_texts(claude, product_ko="케이블 홀더", category="수납/정리",
+                           tone="후기체", clips_info=clips_info)
+    assert claude.calls == 1
+    assert out[1]["voice_text"] == "이 장면 보고 바로 샀어요"     # 컷1 = LLM 첫 항목
+    assert out[2]["caption_text"] == "아래 링크 확인"             # 컷2 = LLM 둘째 항목
+
+
+def test_fill_scene_texts_falls_back_on_bad_llm():
+    class Boom:
+        def complete(self, *a, **k):
+            raise RuntimeError("no key")
+    clips_info = [{"scene_no": 1, "role": "hook", "clip_id": "c1", "tags": [], "description": ""}]
+    out = fill_scene_texts(Boom(), product_ko="상품", category="", tone="", clips_info=clips_info)
+    assert out[1]["voice_text"]  # Mock 폴백으로 비어있지 않음
+
+
+def test_storyline_role_assignment():
+    assert _assign_role(0, 5) == "hook"
+    assert _assign_role(4, 5) == "cta"
+    assert _assign_role(1, 5) in ("problem", "solution", "proof")
 
 
 # ---------------- 스톡 프로바이더 ----------------

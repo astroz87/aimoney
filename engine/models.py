@@ -56,6 +56,9 @@ DEFAULT_EDIT_SETTINGS = {
     "transition_duration": 0.3,   # 전환 길이(초)
     # --- 레이아웃/제목 ---
     "fit_mode": "cover",          # cover=꽉채우기 | contain=박스형
+    "box_scale": 0.94,            # contain 영상 박스 가로 비율 (0.5~1.0)
+    "box_h": 0.60,                # contain 영상 박스 세로 비율 (0.3~0.9)
+    "box_y": 0.34,                # contain 영상 세로 위치 (0=상단, 0.5=중앙, 1=하단)
     "show_title": False,          # 상단 제목 표시 여부
     "title_text": "",             # 상단 제목 문구 (비면 hook 자막/상품명)
     "title_style": {},            # 상단 제목 스타일
