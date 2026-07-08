@@ -23,6 +23,7 @@ class ScriptGenerator(ABC):
 
     @abstractmethod
     def generate(self, *, product_ko: str, category: str,
-                 top_clips: list[Clip], selected_text: str = "") -> list[Scene]:
-        """후킹 컷과 상품 정보로 Scene 리스트를 생성한다."""
+                 top_clips: list[Clip], selected_text: str = "",
+                 tone: str = "") -> list[Scene]:
+        """후킹 컷과 상품 정보로 Scene 리스트를 생성한다. tone=템플릿 톤 힌트."""
         raise NotImplementedError

@@ -11,20 +11,48 @@ from __future__ import annotations
 PLAY_W = 1080
 PLAY_H = 1920
 
-_ASS_HEADER = f"""[Script Info]
-ScriptType: v4.00+
-PlayResX: {PLAY_W}
-PlayResY: {PLAY_H}
-WrapStyle: 2
-ScaledBorderAndShadow: yes
+# 기본 자막 스타일 (템플릿에서 오버라이드 가능)
+DEFAULT_SUBTITLE_STYLE = {
+    "font": "Noto Sans CJK KR",
+    "size": 64,
+    "primary": "&H00FFFFFF",      # 글자색 (ASS BGR, 흰색)
+    "outline_color": "&H00000000",  # 외곽선색 (검정)
+    "box_color": "&H80000000",    # 박스 배경(반투명 검정)
+    "bold": 1,
+    "border_style": 3,            # 1=외곽선, 3=박스
+    "outline": 3,
+    "shadow": 2,
+    "alignment": 2,               # 2=하단중앙, 5=상단중앙, 8=중앙
+    "margin_v": 220,
+    "wrap_max": 16,               # 2줄 줄바꿈 기준 글자수
+}
 
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Caption,Noto Sans CJK KR,64,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,3,3,2,2,60,60,220,1
 
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-"""
+def _style_line(style: dict) -> str:
+    s = {**DEFAULT_SUBTITLE_STYLE, **(style or {})}
+    return (
+        f"Style: Caption,{s['font']},{s['size']},{s['primary']},&H000000FF,"
+        f"{s['outline_color']},{s['box_color']},{s['bold']},0,0,0,100,100,0,0,"
+        f"{s['border_style']},{s['outline']},{s['shadow']},{s['alignment']},60,60,{s['margin_v']},1"
+    )
+
+
+def _header(style: dict) -> str:
+    return (
+        "[Script Info]\n"
+        "ScriptType: v4.00+\n"
+        f"PlayResX: {PLAY_W}\n"
+        f"PlayResY: {PLAY_H}\n"
+        "WrapStyle: 2\n"
+        "ScaledBorderAndShadow: yes\n\n"
+        "[V4+ Styles]\n"
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
+        "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
+        "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+        f"{_style_line(style)}\n\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+    )
 
 
 def _ts(seconds: float) -> str:
@@ -62,14 +90,16 @@ def _wrap_two_lines(text: str, max_chars: int = 16) -> str:
     return text[:mid] + "\\N" + text[mid:]
 
 
-def build_ass(segments: list[dict], out_path: str) -> str:
+def build_ass(segments: list[dict], out_path: str, *, style: dict | None = None) -> str:
     """segments: [{start, end, text}] → ASS 파일 작성. 경로 반환.
 
-    text 는 caption_text.
+    text 는 caption_text. style 로 폰트/색/위치 등을 오버라이드(템플릿).
     """
-    lines = [_ASS_HEADER]
+    style = {**DEFAULT_SUBTITLE_STYLE, **(style or {})}
+    wrap_max = int(style.get("wrap_max", 16))
+    lines = [_header(style)]
     for seg in segments:
-        text = _wrap_two_lines(str(seg.get("text", "")))
+        text = _wrap_two_lines(str(seg.get("text", "")), max_chars=wrap_max)
         text = text.replace("\n", "\\N")
         lines.append(
             f"Dialogue: 0,{_ts(seg['start'])},{_ts(seg['end'])},Caption,,0,0,0,,{text}"

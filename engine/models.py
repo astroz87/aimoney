@@ -54,6 +54,10 @@ DEFAULT_EDIT_SETTINGS = {
     "bgm_volume": 0.18,           # BGM 볼륨 (0~1)
     "transition": "none",         # none | fade
     "transition_duration": 0.3,   # 전환 길이(초)
+    # --- 템플릿(스타일 프리셋) ---
+    "template_id": "",            # 적용된 템플릿 id
+    "subtitle_style": {},         # ASS 자막 스타일 오버라이드 (비면 기본)
+    "script_tone": "",            # 대본 톤 힌트
 }
 
 

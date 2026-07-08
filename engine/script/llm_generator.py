@@ -26,8 +26,9 @@ class LLMScriptGenerator(ScriptGenerator):
         self._llm = llm
 
     def generate(self, *, product_ko: str, category: str,
-                 top_clips: list[Clip], selected_text: str = "") -> list[Scene]:
-        prompt = self._build_prompt(product_ko, category, top_clips, selected_text)
+                 top_clips: list[Clip], selected_text: str = "",
+                 tone: str = "") -> list[Scene]:
+        prompt = self._build_prompt(product_ko, category, top_clips, selected_text, tone)
         try:
             raw = self._llm.complete(prompt, system=_SYSTEM, max_tokens=1500, temperature=0.8)
             scenes = self._parse(raw)
@@ -38,16 +39,17 @@ class LLMScriptGenerator(ScriptGenerator):
             logger.warning("대본 생성 실패(%s) → Mock 폴백", exc)
         return MockScriptGenerator().generate(
             product_ko=product_ko, category=category,
-            top_clips=top_clips, selected_text=selected_text,
+            top_clips=top_clips, selected_text=selected_text, tone=tone,
         )
 
-    def _build_prompt(self, product_ko, category, top_clips, selected_text) -> str:
+    def _build_prompt(self, product_ko, category, top_clips, selected_text, tone="") -> str:
         clip_lines = "\n".join(
             f"- {c.clip_id}: hook={c.hook_score}, tags={c.tags}, {c.description}"
             for c in top_clips[:6]
         ) or "- (분석된 컷 없음)"
+        tone_line = f"톤/스타일 가이드: {tone}\n" if tone else ""
         return (
-            f"상품명: {product_ko}\n카테고리: {category}\n"
+            f"상품명: {product_ko}\n카테고리: {category}\n{tone_line}"
             f"상품 설명(원문 발췌): {selected_text[:300]}\n\n"
             f"후킹 컷 후보:\n{clip_lines}\n\n"
             f"{SCRIPT_RULES}\n\n"

@@ -14,7 +14,8 @@ from engine.render.ffmpeg_renderer import _hex_to_ff
 from engine.stock.factory import get_stock_provider
 from engine.stock.mock_provider import MockStockProvider
 from app.services.project_service import _en_slug
-from engine.subtitle.ass_builder import build_ass, _ts, _wrap_two_lines
+from engine.subtitle.ass_builder import build_ass, _ts, _wrap_two_lines, _style_line
+from engine.template import get_preset, list_presets
 from engine.package.disclosure import DISCLOSURE_TEXT, prepend_disclosure
 from engine.package.affiliate import providers_for_category, build_affiliate_links
 from engine.package.link_router import build_tracking_urls
@@ -134,6 +135,29 @@ def test_build_ass_writes_dialogue(tmp_path):
     content = out.read_text(encoding="utf-8")
     assert "Dialogue:" in content
     assert "PlayResY: 1920" in content
+
+
+def test_build_ass_applies_template_style(tmp_path):
+    out = tmp_path / "s.ass"
+    build_ass([{"start": 0, "end": 2, "text": "x"}], str(out),
+              style={"size": 88, "primary": "&H0000FFFF"})
+    style_line = [l for l in out.read_text(encoding="utf-8").splitlines()
+                  if l.startswith("Style: Caption")][0]
+    assert ",88," in style_line and "&H0000FFFF" in style_line
+
+
+# ---------------- 템플릿 프리셋 ----------------
+def test_template_presets_have_required_fields():
+    ids = {t["id"] for t in list_presets()}
+    assert {"info", "review", "before_after", "hook"} <= ids
+    p = get_preset("review")
+    assert p["subtitle_style"]["primary"] and "edit_settings" in p
+    assert get_preset("nope") is None
+
+
+def test_style_line_reflects_overrides():
+    line = _style_line({"size": 99, "alignment": 8})
+    assert ",99," in line
 
 
 # ---------------- 경제적 이해관계 문구 ----------------

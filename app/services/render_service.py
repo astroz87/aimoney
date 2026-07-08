@@ -52,9 +52,9 @@ def run_render(project_id: str, ctx: JobContext) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     work_dir = settings.project_dir(project_id) / "render_tmp"
 
-    # --- 자막 ---
+    # --- 자막 (템플릿 스타일 반영) ---
     ass_path = out_dir / "subtitle.ass"
-    build_ass(sub_segments, str(ass_path))
+    build_ass(sub_segments, str(ass_path), style=edit_opts.get("subtitle_style") or None)
     build_srt(sub_segments, str(out_dir / "subtitle.srt"))
 
     # --- 렌더 ---

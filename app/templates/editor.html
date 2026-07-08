@@ -22,6 +22,17 @@
 
   <!-- 편집 패널 -->
   <div class="edit-col">
+    <!-- 템플릿 (스타일 프리셋) -->
+    <details class="card" id="template-card">
+      <summary><b>🎨 템플릿 (스타일 프리셋)</b></summary>
+      <div class="stock-search">
+        <select id="tpl-select" style="flex:1"></select>
+        <button class="btn primary" onclick="applyTemplate()">적용</button>
+      </div>
+      <p id="tpl-desc" class="hint"></p>
+      <span id="tpl-msg" class="hint"></span>
+    </details>
+
     <!-- 스톡 영상 검색 -->
     <details class="card" id="stock-card">
       <summary><b>🔍 스톡 영상 (Pexels)</b></summary>

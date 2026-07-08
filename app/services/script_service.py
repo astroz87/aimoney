@@ -36,6 +36,7 @@ def generate_script(project_id: str, provider: str | None = None) -> list[dict]:
         product_ko = project.product_ko
         category = project.category
         selected = project.selected_text
+        tone = (project.edit_settings or {}).get("script_tone", "")
         top = _top_clips(db, project_id)
 
     # 프로바이더 결정: mock 이면 규칙 기반, 아니면 LLM
@@ -50,7 +51,7 @@ def generate_script(project_id: str, provider: str | None = None) -> list[dict]:
 
     scenes = gen.generate(
         product_ko=product_ko, category=category,
-        top_clips=top, selected_text=selected,
+        top_clips=top, selected_text=selected, tone=tone,
     )
 
     _save_scenes(project_id, scenes)

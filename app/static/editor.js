@@ -20,7 +20,43 @@ async function load() {
   renderSlides();
   renderPanel();
   loadAudioPanel();
+  loadTemplates();
 }
+
+// ---- 템플릿 ----
+let TEMPLATES = [];
+async function loadTemplates() {
+  if (TEMPLATES.length) { fillTemplateSelect(); return; }
+  try {
+    const r = await api("GET", "/api/templates");
+    TEMPLATES = r.templates || [];
+    fillTemplateSelect();
+  } catch { /* ignore */ }
+}
+function fillTemplateSelect() {
+  const sel = document.getElementById("tpl-select");
+  if (!sel) return;
+  const cur = (STATE.audio && STATE.audio.template_id) || "";
+  sel.innerHTML = TEMPLATES.map(t =>
+    `<option value="${t.id}" ${t.id === cur ? "selected" : ""}>${t.name}</option>`).join("");
+  showTplDesc();
+  sel.onchange = showTplDesc;
+}
+function showTplDesc() {
+  const sel = document.getElementById("tpl-select");
+  const t = TEMPLATES.find(x => x.id === sel.value);
+  document.getElementById("tpl-desc").textContent = t ? t.description : "";
+}
+async function applyTemplate() {
+  const id = document.getElementById("tpl-select").value;
+  tplMsg("적용 중...");
+  try {
+    await api("POST", `/api/projects/${PID}/apply-template`, { template_id: id });
+    tplMsg("적용됨 ✓ (자막 스타일/배경/전환/톤 반영). 재렌더링하면 반영됩니다.");
+    loadAudioPanel();
+  } catch (e) { tplMsg("실패: " + e.message); }
+}
+const tplMsg = (m) => { const e = document.getElementById("tpl-msg"); if (e) e.textContent = m; };
 
 // ---- 오디오/배경 (프로젝트) ----
 async function loadAudioPanel() {
